@@ -1,0 +1,108 @@
+import uuid
+from typing import Annotated
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+
+from app.database import get_db
+from app.dependencies import CurrentUser, RequireAnyRole, RequireReception, RequireAdmin
+from app.models.invoice import Invoice
+from app.models.payment import Payment
+from app.schemas import InvoiceCreate, InvoiceOut, InvoiceUpdate, PaymentCreate, PaymentOut
+from app.services.invoice_number import generate_invoice_number
+
+router = APIRouter(prefix="/api/invoices", tags=["Facturación"])
+
+
+@router.get("", response_model=list[InvoiceOut], dependencies=[RequireAnyRole])
+async def list_invoices(
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    status: str | None = None,
+    patient_id: uuid.UUID | None = None,
+):
+    q = select(Invoice).where(Invoice.clinic_id == current_user.clinic_id)
+    if status:
+        q = q.where(Invoice.status == status)
+    if patient_id:
+        q = q.where(Invoice.patient_id == patient_id)
+    q = q.order_by(Invoice.issued_at.desc())
+    result = await db.execute(q)
+    return result.scalars().all()
+
+
+@router.post("", response_model=InvoiceOut, status_code=status.HTTP_201_CREATED, dependencies=[RequireReception])
+async def create_invoice(
+    body: InvoiceCreate,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    invoice_number = await generate_invoice_number(current_user.clinic_id, db)
+    total = body.subtotal + body.tax
+    invoice = Invoice(
+        **body.model_dump(),
+        clinic_id=current_user.clinic_id,
+        invoice_number=invoice_number,
+        total=total,
+    )
+    db.add(invoice)
+    await db.flush()
+    await db.refresh(invoice)
+    return invoice
+
+
+@router.patch("/{invoice_id}", response_model=InvoiceOut, dependencies=[RequireAdmin])
+async def update_invoice(
+    invoice_id: uuid.UUID,
+    body: InvoiceUpdate,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await db.execute(
+        select(Invoice).where(Invoice.id == invoice_id, Invoice.clinic_id == current_user.clinic_id)
+    )
+    invoice = result.scalar_one_or_none()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(invoice, field, value)
+    await db.flush()
+    await db.refresh(invoice)
+    return invoice
+
+
+@router.post("/{invoice_id}/pay", response_model=PaymentOut, status_code=status.HTTP_201_CREATED, dependencies=[RequireReception])
+async def register_payment(
+    invoice_id: uuid.UUID,
+    body: PaymentCreate,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await db.execute(
+        select(Invoice).where(Invoice.id == invoice_id, Invoice.clinic_id == current_user.clinic_id)
+    )
+    invoice = result.scalar_one_or_none()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
+    if invoice.status == "anulada":
+        raise HTTPException(status_code=400, detail="No se puede registrar un pago en una factura anulada")
+
+    payment = Payment(
+        **body.model_dump(),
+        clinic_id=current_user.clinic_id,
+        patient_id=invoice.patient_id,
+        created_by=current_user.id,
+    )
+    db.add(payment)
+
+    # Calcular total pagado y actualizar status
+    paid_result = await db.execute(
+        select(func.sum(Payment.amount)).where(Payment.invoice_id == invoice_id)
+    )
+    total_paid = (paid_result.scalar() or 0) + body.amount
+    if total_paid >= invoice.total:
+        invoice.status = "pagada"
+
+    await db.flush()
+    await db.refresh(payment)
+    return payment
