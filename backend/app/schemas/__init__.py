@@ -7,9 +7,18 @@ from pydantic import BaseModel, EmailStr
 
 
 # ── Clinic ────────────────────────────────────────
+class ClinicPublic(BaseModel):
+    """Solo id + nombre — se expone sin autenticación para el dropdown de onboarding."""
+    id: uuid.UUID
+    name: str
+
+    model_config = {"from_attributes": True}
+
+
 class ClinicOut(BaseModel):
     id: uuid.UUID
     name: str
+    access_code: str | None
     subscription_plan: str
     is_active: bool
     email: str | None

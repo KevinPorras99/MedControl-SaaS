@@ -7,6 +7,7 @@ import AppointmentsPage from './pages/Appointments'
 import MedicalRecordsPage from './pages/MedicalRecords'
 import InvoicesPage from './pages/Invoices'
 import SettingsPage from './pages/Settings'
+import OnboardingPage from './pages/Onboarding'
 
 export default function App() {
   return (
@@ -24,19 +25,18 @@ export default function App() {
       </SignedOut>
 
       <SignedIn>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="patients/*" element={<PatientsPage />} />
-              <Route path="appointments/*" element={<AppointmentsPage />} />
-              <Route path="records/:patientId" element={<MedicalRecordsPage />} />
-              <Route path="invoices/*" element={<InvoicesPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
+        <Routes>
+          <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="patients/*" element={<PatientsPage />} />
+            <Route path="appointments/*" element={<AppointmentsPage />} />
+            <Route path="records/:patientId" element={<MedicalRecordsPage />} />
+            <Route path="invoices/*" element={<InvoicesPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
+        </Routes>
       </SignedIn>
     </BrowserRouter>
   )

@@ -1,14 +1,18 @@
-import { useState } from 'react'
-import { Plus, CalendarDays } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Plus, CalendarDays, Search } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAppointments, useCreateAppointment, useUpdateAppointment, usePatients } from '../../hooks'
 import { Button, PageHeader, Card, Modal, Input, Select, Badge, Spinner, EmptyState } from '../../components/ui'
 
 function AppointmentForm({ onSubmit, loading }) {
   const { data: patients } = usePatients()
+  const qc = useQueryClient()
+  const me = qc.getQueryData(['me'])
+  const currentUserId = me?.user?.id || ''
   const [form, setForm] = useState({
-    patient_id: '', doctor_id: '', appointment_date: '', duration_minutes: 30, reason: '',
+    patient_id: '', doctor_id: currentUserId, appointment_date: '', duration_minutes: 30, reason: '',
   })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -42,35 +46,66 @@ function AppointmentForm({ onSubmit, loading }) {
 export default function AppointmentsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
+  const [search, setSearch] = useState('')
 
   const { data: appointments, isLoading } = useAppointments({ status: statusFilter || undefined })
+  const { data: patients } = usePatients()
   const createAppointment = useCreateAppointment()
   const updateAppointment = useUpdateAppointment()
+
+  // Mapa id → nombre para resolución O(1)
+  const patientMap = useMemo(() => {
+    const map = {}
+    patients?.forEach(p => { map[p.id] = p.full_name })
+    return map
+  }, [patients])
+
+  const filtered = useMemo(() => {
+    if (!appointments) return []
+    if (!search.trim()) return appointments
+    const q = search.toLowerCase()
+    return appointments.filter(a =>
+      patientMap[a.patient_id]?.toLowerCase().includes(q) ||
+      a.reason?.toLowerCase().includes(q) ||
+      a.status?.toLowerCase().includes(q)
+    )
+  }, [appointments, search, patientMap])
 
   return (
     <div>
       <PageHeader
         title="Citas"
-        subtitle={`${appointments?.length || 0} registros`}
+        subtitle={`${filtered.length} registros`}
         action={<Button onClick={() => setShowCreate(true)}><Plus size={16} /> Nueva cita</Button>}
       />
 
-      {/* Filters */}
-      <div className="flex gap-2 mb-5 flex-wrap">
-        {['', 'programada', 'confirmada', 'atendida', 'cancelada'].map(s => (
-          <button
-            key={s}
-            onClick={() => setStatusFilter(s)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${statusFilter === s ? 'bg-primary-500 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-          >
-            {s || 'Todas'}
-          </button>
-        ))}
+      {/* Filtros */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        <div className="relative flex-1 max-w-sm">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Buscar por paciente, motivo..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {['', 'programada', 'confirmada', 'atendida', 'cancelada'].map(s => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${statusFilter === s ? 'bg-primary-500 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+            >
+              {s || 'Todas'}
+            </button>
+          ))}
+        </div>
       </div>
 
       <Card>
-        {isLoading ? <Spinner /> : !appointments?.length ? (
-          <EmptyState icon={CalendarDays} title="Sin citas" description="Agendá la primera cita" />
+        {isLoading ? <Spinner /> : !filtered.length ? (
+          <EmptyState icon={CalendarDays} title="Sin citas" description={search ? 'No hay resultados para tu búsqueda' : 'Agendá la primera cita'} />
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
@@ -79,12 +114,14 @@ export default function AppointmentsPage() {
               ))}</tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {appointments.map(a => (
+              {filtered.map(a => (
                 <tr key={a.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-900">
                     {format(new Date(a.appointment_date), "dd MMM · HH:mm", { locale: es })}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{a.patient_id}</td>
+                  <td className="px-4 py-3 text-gray-800 font-medium">
+                    {patientMap[a.patient_id] || <span className="text-gray-400 italic">—</span>}
+                  </td>
                   <td className="px-4 py-3 text-gray-500">{a.reason || '—'}</td>
                   <td className="px-4 py-3 text-gray-500">{a.duration_minutes} min</td>
                   <td className="px-4 py-3"><Badge status={a.status} /></td>

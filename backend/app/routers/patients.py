@@ -18,7 +18,7 @@ async def list_patients(
     db: Annotated[AsyncSession, Depends(get_db)],
     search: str | None = Query(None),
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, le=200),
+    limit: int = Query(200, le=500),
 ):
     q = select(Patient).where(
         Patient.clinic_id == current_user.clinic_id,

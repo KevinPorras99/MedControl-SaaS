@@ -3,11 +3,11 @@ import { useApi } from '../lib/api'
 import toast from 'react-hot-toast'
 
 // ── Patients ──────────────────────────────────────
-export function usePatients(search = '') {
+export function usePatients({ search = '', limit = 200 } = {}) {
   const api = useApi()
   return useQuery({
-    queryKey: ['patients', search],
-    queryFn: () => api.get('/api/patients', { params: { search } }).then(r => r.data),
+    queryKey: ['patients', search, limit],
+    queryFn: () => api.get('/api/patients', { params: { search, limit } }).then(r => r.data),
   })
 }
 

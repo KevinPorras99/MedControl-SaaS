@@ -36,7 +36,7 @@ export default function PatientsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [selected, setSelected] = useState(null)
 
-  const { data: patients, isLoading } = usePatients(search)
+  const { data: patients, isLoading } = usePatients({ search })
   const createPatient = useCreatePatient()
   const updatePatient = useUpdatePatient()
 

@@ -1,5 +1,5 @@
 import httpx
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -30,11 +30,18 @@ async def send_whatsapp_message(phone: str, message: str) -> bool:
 
 async def schedule_reminder(appointment, db: AsyncSession):
     """Crea un log de recordatorio pendiente para la cita."""
-    if not appointment.patient or not appointment.patient.phone:
+    from sqlalchemy import select
+    from app.models.patient import Patient
+
+    # Carga explícita para evitar lazy loading en sesión async
+    result = await db.execute(select(Patient).where(Patient.id == appointment.patient_id))
+    patient = result.scalar_one_or_none()
+
+    if not patient or not patient.phone:
         return
 
     reminder_time = appointment.appointment_date - timedelta(hours=24)
-    if reminder_time < datetime.utcnow():
+    if reminder_time < datetime.now(timezone.utc):
         return  # La cita es en menos de 24h, no hay tiempo para recordatorio
 
     message = (
@@ -47,7 +54,7 @@ async def schedule_reminder(appointment, db: AsyncSession):
         clinic_id=appointment.clinic_id,
         patient_id=appointment.patient_id,
         appointment_id=appointment.id,
-        phone_number=appointment.patient.phone,
+        phone_number=patient.phone,
         message_body=message,
         status="pendiente",
     )

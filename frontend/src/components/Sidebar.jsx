@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { UserButton, useUser } from '@clerk/clerk-react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   LayoutDashboard, Users, CalendarDays,
-  FileText, Receipt, Settings, Stethoscope
+  Receipt, Settings, Stethoscope, Copy, Check
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -14,8 +16,33 @@ const NAV = [
   { to: '/settings',     icon: Settings,        label: 'Configuración' },
 ]
 
+function AccessCodeBadge({ code }) {
+  const [copied, setCopied] = useState(false)
+  const copy = () => {
+    navigator.clipboard.writeText(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+  return (
+    <div className="mx-3 mb-3 bg-primary-800 rounded-lg px-3 py-2.5">
+      <p className="text-xs text-primary-400 font-medium mb-1">Código de acceso</p>
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono font-bold text-white tracking-widest text-sm">{code}</span>
+        <button onClick={copy} className="text-primary-300 hover:text-white transition-colors shrink-0">
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+        </button>
+      </div>
+      <p className="text-xs text-primary-400 mt-1">Compartilo con tu equipo</p>
+    </div>
+  )
+}
+
 export default function Sidebar() {
   const { user } = useUser()
+  const qc = useQueryClient()
+  const me = qc.getQueryData(['me'])
+  const isAdmin = me?.user?.role === 'admin_clinic'
+  const accessCode = me?.clinic?.access_code
 
   return (
     <aside className="w-64 flex flex-col bg-primary-900 text-white shrink-0">
@@ -47,6 +74,9 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
+
+      {/* Código de acceso (solo admin) */}
+      {isAdmin && accessCode && <AccessCodeBadge code={accessCode} />}
 
       {/* User */}
       <div className="px-4 py-4 border-t border-primary-700 flex items-center gap-3">

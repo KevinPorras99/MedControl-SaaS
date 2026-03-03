@@ -4,6 +4,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import httpx
+from jose import jwt, JWTError
 
 from app.config import settings
 from app.database import get_db
@@ -11,24 +12,43 @@ from app.models.user import User
 
 security = HTTPBearer()
 
+# Cache en memoria para no pedir las JWKS en cada request
+_jwks_cache: dict = {}
+
+
+async def _get_jwks(issuer: str) -> dict:
+    if issuer not in _jwks_cache:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{issuer}/.well-known/jwks.json")
+            resp.raise_for_status()
+        _jwks_cache[issuer] = resp.json()
+    return _jwks_cache[issuer]
+
 
 async def verify_clerk_token(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
 ) -> dict:
-    """Valida el JWT de Clerk y devuelve el payload."""
+    """Valida el JWT de Clerk localmente usando sus JWKS públicas."""
     token = credentials.credentials
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            "https://api.clerk.com/v1/tokens/verify",
-            headers={"Authorization": f"Bearer {settings.clerk_secret_key}"},
-            params={"token": token},
+    try:
+        unverified = jwt.get_unverified_claims(token)
+        issuer = unverified.get("iss", "")
+        if not issuer:
+            raise JWTError("Falta el campo 'iss' en el token")
+
+        jwks = await _get_jwks(issuer)
+        payload = jwt.decode(
+            token,
+            jwks,
+            algorithms=["RS256"],
+            options={"verify_aud": False},
         )
-    if resp.status_code != 200:
+        return payload
+    except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido o expirado",
         )
-    return resp.json()
 
 
 async def get_current_user(

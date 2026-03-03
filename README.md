@@ -6,8 +6,8 @@ Sistema de Gestión para Clínicas Privadas — v1.0
 
 ```
 medcontrol/
-├── backend/      → FastAPI + SQLAlchemy + Supabase
-└── frontend/     → React + Vite + Clerk + TanStack Query
+├── backend/      → FastAPI + SQLAlchemy + Supabase (PostgreSQL)
+└── frontend/     → React + Vite + Clerk + TanStack Query + Tailwind CSS
 ```
 
 ---
@@ -15,7 +15,14 @@ medcontrol/
 ## Puesta en marcha
 
 ### 1. Base de datos
-Corré el SQL de migración completo en el **SQL Editor de Supabase**.
+
+Ejecutá el SQL de migración completo en el **SQL Editor de Supabase**.
+
+Si estás actualizando un proyecto existente, también corrés:
+
+```sql
+ALTER TABLE clinics ADD COLUMN IF NOT EXISTS access_code VARCHAR(10) UNIQUE;
+```
 
 ### 2. Backend
 
@@ -35,7 +42,7 @@ Documentación disponible en: http://localhost:8000/docs
 ```bash
 cd frontend
 npm install
-cp .env.example .env            # Completar variables
+cp .env.example .env.local      # Completar variables
 npm run dev
 ```
 
@@ -43,40 +50,95 @@ App disponible en: http://localhost:5173
 
 ---
 
-## Variables de entorno necesarias
+## Variables de entorno
 
-### Backend (.env)
+### Backend (`backend/.env`)
+
 | Variable | Descripción |
 |---|---|
-| `SUPABASE_URL` | URL del proyecto Supabase |
-| `SUPABASE_ANON_KEY` | Clave anónima pública |
-| `SUPABASE_SERVICE_ROLE_KEY` | Clave de servicio (para bypass RLS en WhatsApp logs) |
-| `DATABASE_URL` | Conexión PostgreSQL directa (asyncpg) |
+| `DATABASE_URL` | Conexión PostgreSQL con driver asyncpg (`postgresql+asyncpg://...`) |
 | `CLERK_SECRET_KEY` | Clave secreta de Clerk |
+| `CLERK_PUBLISHABLE_KEY` | Clave pública de Clerk |
 | `WHATSAPP_TOKEN` | Token de WhatsApp Cloud API (opcional) |
 | `WHATSAPP_PHONE_NUMBER_ID` | ID del número de WhatsApp (opcional) |
 
-### Frontend (.env)
+### Frontend (`frontend/.env.local`)
+
 | Variable | Descripción |
 |---|---|
 | `VITE_CLERK_PUBLISHABLE_KEY` | Clave pública de Clerk |
-| `VITE_API_URL` | URL del backend (default: http://localhost:8000) |
-| `VITE_SUPABASE_URL` | URL del proyecto Supabase |
-| `VITE_SUPABASE_ANON_KEY` | Clave anónima pública |
+| `VITE_API_URL` | URL del backend (default: `http://localhost:8000`) |
 
 ---
 
 ## Arquitectura
 
 - **Multi-tenant**: aislamiento por `clinic_id` en todas las tablas
-- **Auth**: Clerk maneja sesiones; el backend valida el JWT en cada request
-- **RLS**: Supabase bloquea accesos a nivel de base de datos como segunda capa
+- **Auth**: Clerk maneja sesiones; el backend valida el JWT via JWKS en cada request
+- **Roles**: `admin_clinic` · `doctor` · `receptionist`
+- **RLS**: Supabase bloquea accesos a nivel de base de datos como segunda capa de seguridad
 - **Inmutabilidad**: `medical_records` y `payments` no se pueden modificar ni eliminar
+
+---
+
+## Flujo de onboarding
+
+1. El usuario se registra en Clerk
+2. En el primer acceso, se muestra la pantalla de configuración de cuenta
+3. **Admin** → ingresa el nombre de la clínica → el sistema genera un código de acceso único de 6 caracteres
+4. **Doctor / Recepcionista** → selecciona su clínica del dropdown y escribe el código de acceso que le dio el admin
+5. El código de acceso siempre está visible en el sidebar para el admin (con botón de copiar)
+
+---
+
+## Módulos
+
+| Módulo | Descripción |
+|---|---|
+| Pacientes | Registro, búsqueda y edición de pacientes de la clínica |
+| Citas | Agendamiento, filtros por estado, cambio de estado inline |
+| Expedientes | Historial médico por paciente, inmutable |
+| Facturación | Emisión de facturas con múltiples servicios, IVA 13%, PDF imprimible |
+| Recordatorios | Logs de WhatsApp pendientes (envío manual o por worker externo) |
+
+---
+
+## Usuarios de prueba
+
+Crear estos usuarios en el **Dashboard de Clerk → Users → Create User**.
+El rol se asigna en el onboarding al hacer el primer login.
+
+| Rol | Email | Contraseña |
+|---|---|---|
+| `admin_clinic` | admin@medcontrol.dev | Mc$Admin#9x2Z! |
+| `doctor` | doctor@medcontrol.dev | Mc$Dr#7kWp3N! |
+| `receptionist` | recepcion@medcontrol.dev | Mc$Rec#4mQv8L! |
+
+> Clerk requiere contraseñas con mayúsculas, minúsculas, números y símbolos.
+
+---
+
+## Asignar código de acceso a clínica existente
+
+Si la clínica fue creada antes de la versión con códigos de acceso, asignalo manualmente en Supabase:
+
+```sql
+-- Ver clínicas y sus códigos actuales
+SELECT id, name, access_code FROM clinics;
+
+-- Asignar código a una clínica específica por su ID
+UPDATE clinics
+SET access_code = 'MED001'
+WHERE id = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
+```
+
+---
 
 ## Roadmap pendiente
 
-- [ ] Módulo de WhatsApp (worker/cron para envío de recordatorios)
-- [ ] Reportes financieros
+- [ ] Worker/cron para envío automático de recordatorios WhatsApp
+- [ ] Reportes financieros y exportación a CSV
 - [ ] Sistema de suscripciones (Stripe)
 - [ ] Subida de archivos al expediente (Supabase Storage)
-- [ ] Facturación electrónica regional
+- [ ] Facturación electrónica regional (Hacienda CR)
+- [ ] App móvil (React Native)

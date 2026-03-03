@@ -11,6 +11,7 @@ class Clinic(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    access_code: Mapped[str | None] = mapped_column(String(10), nullable=True, unique=True, index=True)
     subscription_plan: Mapped[str] = mapped_column(
         Enum("basico", "profesional", "clinica", name="subscription_plan"),
         nullable=False, default="basico"

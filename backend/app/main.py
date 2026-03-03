@@ -1,8 +1,11 @@
-from fastapi import FastAPI
+import traceback
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.routers import (
+    auth_router,
     patients_router,
     appointments_router,
     medical_records_router,
@@ -30,10 +33,20 @@ app.add_middleware(
 )
 
 # ── Routers ───────────────────────────────────────
+app.include_router(auth_router)
 app.include_router(patients_router)
 app.include_router(appointments_router)
 app.include_router(medical_records_router)
 app.include_router(invoices_router)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Error interno: {type(exc).__name__}: {exc}"},
+    )
 
 
 @app.get("/health", tags=["Sistema"])

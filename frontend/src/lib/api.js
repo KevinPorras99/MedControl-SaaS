@@ -20,7 +20,11 @@ export function useApi() {
   authApi.interceptors.response.use(
     (res) => res,
     (err) => {
-      const msg = err.response?.data?.detail || 'Error inesperado'
+      const detail = err.response?.data?.detail
+      let msg = 'Error inesperado'
+      if (typeof detail === 'string') msg = detail
+      else if (Array.isArray(detail)) msg = detail.map(e => e.msg || e.message).join(' · ')
+      else if (detail) msg = JSON.stringify(detail)
       return Promise.reject(new Error(msg))
     }
   )

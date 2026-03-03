@@ -60,8 +60,11 @@ async def create_appointment(
     await db.flush()
     await db.refresh(appointment)
 
-    # Programar recordatorio WhatsApp
-    await schedule_reminder(appointment, db)
+    # Programar recordatorio WhatsApp (no-crítico, no debe romper la cita)
+    try:
+        await schedule_reminder(appointment, db)
+    except Exception:
+        pass
 
     return appointment
 
