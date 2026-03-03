@@ -10,6 +10,7 @@ from app.routers import (
     appointments_router,
     medical_records_router,
     invoices_router,
+    settings_router,
 )
 
 app = FastAPI(
@@ -38,6 +39,7 @@ app.include_router(patients_router)
 app.include_router(appointments_router)
 app.include_router(medical_records_router)
 app.include_router(invoices_router)
+app.include_router(settings_router)
 
 
 @app.exception_handler(Exception)
@@ -47,6 +49,12 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"detail": f"Error interno: {type(exc).__name__}: {exc}"},
     )
+
+
+@app.on_event("startup")
+async def startup():
+    from app import storage
+    await storage.ensure_bucket()
 
 
 @app.get("/health", tags=["Sistema"])

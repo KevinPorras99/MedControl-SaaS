@@ -78,19 +78,10 @@ async def onboarding(
         await db.flush()
 
     else:
-        if not body.clinic_id:
-            raise HTTPException(status_code=422, detail="Seleccioná una clínica.")
-        if not body.access_code:
-            raise HTTPException(status_code=422, detail="Ingresá el código de acceso de la clínica.")
-
-        result = await db.execute(
-            select(Clinic).where(Clinic.id == body.clinic_id, Clinic.is_active == True)
+        raise HTTPException(
+            status_code=403,
+            detail="Solo los administradores pueden registrar una clínica. Si sos doctor o recepcionista, pedile al administrador que te agregue desde Configuración → Equipo.",
         )
-        clinic = result.scalar_one_or_none()
-        if not clinic:
-            raise HTTPException(status_code=404, detail="Clínica no encontrada.")
-        if clinic.access_code != body.access_code.strip().upper():
-            raise HTTPException(status_code=403, detail="Código de acceso incorrecto.")
 
     user = User(
         clerk_id=clerk_id,

@@ -51,22 +51,61 @@ async def verify_clerk_token(
         )
 
 
+async def _get_email_from_clerk(clerk_id: str) -> str | None:
+    """Consulta la API de Clerk para obtener el email principal del usuario."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"https://api.clerk.com/v1/users/{clerk_id}",
+                headers={"Authorization": f"Bearer {settings.clerk_secret_key}"},
+            )
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            primary_id = data.get("primary_email_address_id")
+            for ea in data.get("email_addresses", []):
+                if ea["id"] == primary_id:
+                    return ea["email_address"]
+    except Exception:
+        pass
+    return None
+
+
 async def get_current_user(
     token_data: Annotated[dict, Depends(verify_clerk_token)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
-    """Obtiene el usuario interno a partir del clerk_id del JWT."""
+    """Obtiene el usuario interno a partir del clerk_id del JWT.
+    Si no se encuentra por clerk_id, intenta vincular un usuario pendiente por email."""
     clerk_id = token_data.get("sub")
+
+    # 1. Búsqueda normal por clerk_id
     result = await db.execute(
         select(User).where(User.clerk_id == clerk_id, User.is_active == True)
     )
     user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Usuario no encontrado. Asegurate de completar el onboarding.",
+    if user:
+        return user
+
+    # 2. Intentar auto-vincular un usuario pendiente creado por el admin
+    email = await _get_email_from_clerk(clerk_id)
+    if email:
+        pending_result = await db.execute(
+            select(User).where(
+                User.clerk_id == f"pending:{email}",
+                User.is_active == True,
+            )
         )
-    return user
+        pending_user = pending_result.scalar_one_or_none()
+        if pending_user:
+            pending_user.clerk_id = clerk_id
+            await db.flush()
+            return pending_user
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Usuario no encontrado. Asegurate de completar el onboarding.",
+    )
 
 
 # ── Tipo reutilizable ──────────────────────────────

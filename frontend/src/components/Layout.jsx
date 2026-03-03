@@ -14,8 +14,8 @@ export default function Layout() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <div className="flex h-screen items-center justify-center">
+        <div className="w-8 h-8 border-4 border-gray-400 dark:border-white/20 border-t-yellow-500 rounded-full animate-spin" />
       </div>
     )
   }
@@ -23,7 +23,7 @@ export default function Layout() {
   if (isError) return <Navigate to="/onboarding" replace />
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto px-6 py-8">

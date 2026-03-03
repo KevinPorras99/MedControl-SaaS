@@ -53,7 +53,6 @@ export default function AppointmentsPage() {
   const createAppointment = useCreateAppointment()
   const updateAppointment = useUpdateAppointment()
 
-  // Mapa id → nombre para resolución O(1)
   const patientMap = useMemo(() => {
     const map = {}
     patients?.forEach(p => { map[p.id] = p.full_name })
@@ -73,18 +72,20 @@ export default function AppointmentsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Citas"
-        subtitle={`${filtered.length} registros`}
-        action={<Button onClick={() => setShowCreate(true)}><Plus size={16} /> Nueva cita</Button>}
-      />
+      <div className="animate-fade-in-down">
+        <PageHeader
+          title="Citas"
+          subtitle={`${filtered.length} registros`}
+          action={<Button onClick={() => setShowCreate(true)}><Plus size={16} /> Nueva cita</Button>}
+        />
+      </div>
 
       {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-5">
+      <div className="flex flex-col sm:flex-row gap-3 mb-5 animate-fade-in" style={{ animationDelay: '0.1s' }}>
         <div className="relative flex-1 max-w-sm">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/50" />
           <input
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300/50 dark:border-white/20 bg-white/[0.08] dark:bg-white/[0.05] backdrop-blur-md dark:backdrop-blur-md text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-white/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-400/60 dark:focus:ring-gold-400/40"
             placeholder="Buscar por paciente, motivo..."
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -95,7 +96,11 @@ export default function AppointmentsPage() {
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${statusFilter === s ? 'bg-primary-500 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                statusFilter === s
+                  ? 'bg-gradient-to-r from-gold-500 to-gold-600 text-white shadow-lg shadow-gold-300/30'
+                  : 'bg-white/[0.08] dark:bg-white/[0.05] border border-gray-300/50 dark:border-white/20 text-gray-600 dark:text-white/80 hover:bg-white/[0.12] dark:hover:bg-white/[0.08] hover:text-gold-700 dark:hover:text-gold-400 backdrop-blur-md dark:backdrop-blur-md'
+              }`}
             >
               {s || 'Todas'}
             </button>
@@ -108,22 +113,22 @@ export default function AppointmentsPage() {
           <EmptyState icon={CalendarDays} title="Sin citas" description={search ? 'No hay resultados para tu búsqueda' : 'Agendá la primera cita'} />
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-gold-50 border-b border-gold-200">
               <tr>{['Fecha y hora', 'Paciente', 'Motivo', 'Duración', 'Estado', ''].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-white/70 uppercase tracking-wide">{h}</th>
               ))}</tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map(a => (
-                <tr key={a.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">
+            <tbody className="divide-y divide-silver-100">
+              {filtered.map((a, i) => (
+                <tr key={a.id} className="hover:bg-gold-50/50 transition-colors animate-fade-in stagger-item" style={{ animationDelay: `${0.1 + i * 0.05}s` }}>
+                  <td className="px-4 py-3 font-medium text-gray-800 dark:text-white">
                     {format(new Date(a.appointment_date), "dd MMM · HH:mm", { locale: es })}
                   </td>
-                  <td className="px-4 py-3 text-gray-800 font-medium">
-                    {patientMap[a.patient_id] || <span className="text-gray-400 italic">—</span>}
+                  <td className="px-4 py-3 text-gray-700 dark:text-white font-medium">
+                    {patientMap[a.patient_id] || <span className="text-gray-400 dark:text-white/50 italic">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-gray-500">{a.reason || '—'}</td>
-                  <td className="px-4 py-3 text-gray-500">{a.duration_minutes} min</td>
+                  <td className="px-4 py-3 text-gray-600 dark:text-white/70">{a.reason || '—'}</td>
+                  <td className="px-4 py-3 text-gray-600 dark:text-white/70">{a.duration_minutes} min</td>
                   <td className="px-4 py-3"><Badge status={a.status} /></td>
                   <td className="px-4 py-3">
                     <Select

@@ -134,6 +134,18 @@ class AppointmentOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Attachment ────────────────────────────────────
+class AttachmentOut(BaseModel):
+    id: uuid.UUID
+    file_name: str
+    file_url: str
+    file_size_bytes: int | None
+    mime_type: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 # ── Medical Record ────────────────────────────────
 class MedicalRecordCreate(BaseModel):
     patient_id: uuid.UUID

@@ -89,6 +89,75 @@ export function useCreateRecord() {
   })
 }
 
+export function useUploadAttachment() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ recordId, patientId, file }) => {
+      const form = new FormData()
+      form.append('file', file)
+      return api.post(`/api/records/${recordId}/attachments`, form).then(r => r.data)
+    },
+    onSuccess: (_, { patientId }) => {
+      qc.invalidateQueries(['records', patientId])
+      toast.success('Archivo subido')
+    },
+    onError: (e) => toast.error(e.response?.data?.detail || e.message),
+  })
+}
+
+export function useDeleteAttachment() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ attachmentId }) => api.delete(`/api/records/attachments/${attachmentId}`),
+    onSuccess: (_, { patientId }) => {
+      qc.invalidateQueries(['records', patientId])
+      toast.success('Archivo eliminado')
+    },
+    onError: (e) => toast.error(e.response?.data?.detail || e.message),
+  })
+}
+
+// ── Me (perfil actual) ────────────────────────────
+export function useMe() {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['me'],
+    queryFn: () => api.get('/api/auth/me').then(r => r.data),
+    staleTime: 1000 * 60 * 10,
+  })
+}
+
+// ── Team (gestión de equipo) ──────────────────────
+export function useTeamMembers() {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['team'],
+    queryFn: () => api.get('/api/settings/users').then(r => r.data),
+  })
+}
+
+export function useAddTeamMember() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.post('/api/settings/users', data).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries(['team']); toast.success('Usuario agregado') },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+export function useRemoveTeamMember() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (userId) => api.delete(`/api/settings/users/${userId}`),
+    onSuccess: () => { qc.invalidateQueries(['team']); toast.success('Usuario eliminado') },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
 // ── Invoices ──────────────────────────────────────
 export function useInvoices(filters = {}) {
   const api = useApi()

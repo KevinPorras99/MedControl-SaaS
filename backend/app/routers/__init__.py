@@ -3,6 +3,7 @@ from app.routers.patients import router as patients_router
 from app.routers.appointments import router as appointments_router
 from app.routers.medical_records import router as medical_records_router
 from app.routers.invoices import router as invoices_router
+from app.routers.settings import router as settings_router
 
 __all__ = [
     "auth_router",
@@ -10,4 +11,5 @@ __all__ = [
     "appointments_router",
     "medical_records_router",
     "invoices_router",
+    "settings_router",
 ]
