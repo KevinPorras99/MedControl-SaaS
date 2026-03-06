@@ -69,7 +69,7 @@ async def create_appointment(
     return appointment
 
 
-@router.patch("/{appointment_id}", response_model=AppointmentOut)
+@router.patch("/{appointment_id}", response_model=AppointmentOut, dependencies=[RequireAnyRole])
 async def update_appointment(
     appointment_id: uuid.UUID,
     body: AppointmentUpdate,

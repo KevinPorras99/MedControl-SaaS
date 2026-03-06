@@ -126,6 +126,7 @@ export function useMe() {
     queryKey: ['me'],
     queryFn: () => api.get('/api/auth/me').then(r => r.data),
     staleTime: 1000 * 60 * 10,
+    retry: false,
   })
 }
 
@@ -183,6 +184,89 @@ export function useRegisterPayment() {
   return useMutation({
     mutationFn: ({ invoiceId, ...data }) => api.post(`/api/invoices/${invoiceId}/pay`, data).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries(['invoices']); toast.success('Pago registrado') },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+// ── Reports ───────────────────────────────────────
+export function useFinancialReport({ dateFrom, dateTo } = {}) {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['reports', 'financial', dateFrom, dateTo],
+    queryFn: () =>
+      api.get('/api/reports/financial', {
+        params: { date_from: dateFrom || undefined, date_to: dateTo || undefined },
+      }).then(r => r.data),
+  })
+}
+
+function triggerCsvDownload(blob, filename) {
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(url)
+}
+
+export function useDownloadInvoicesCSV() {
+  const api = useApi()
+  return async ({ dateFrom, dateTo, status } = {}) => {
+    try {
+      const res = await api.get('/api/reports/export/invoices', {
+        params: { date_from: dateFrom || undefined, date_to: dateTo || undefined, status: status || undefined },
+        responseType: 'blob',
+      })
+      triggerCsvDownload(res.data, `facturas_${new Date().toISOString().split('T')[0]}.csv`)
+      toast.success('CSV de facturas descargado')
+    } catch {
+      toast.error('Error al descargar el CSV')
+    }
+  }
+}
+
+export function useDownloadPaymentsCSV() {
+  const api = useApi()
+  return async ({ dateFrom, dateTo } = {}) => {
+    try {
+      const res = await api.get('/api/reports/export/payments', {
+        params: { date_from: dateFrom || undefined, date_to: dateTo || undefined },
+        responseType: 'blob',
+      })
+      triggerCsvDownload(res.data, `pagos_${new Date().toISOString().split('T')[0]}.csv`)
+      toast.success('CSV de pagos descargado')
+    } catch {
+      toast.error('Error al descargar el CSV')
+    }
+  }
+}
+
+// ── Billing / Suscripciones ───────────────────────
+export function useSubscription() {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['billing', 'subscription'],
+    queryFn: () => api.get('/api/billing/subscription').then(r => r.data),
+    retry: false,
+  })
+}
+
+export function useCreateCheckoutSession() {
+  const api = useApi()
+  return useMutation({
+    mutationFn: (plan) => api.post('/api/billing/checkout', { plan }).then(r => r.data),
+    onSuccess: ({ checkout_url }) => { window.location.href = checkout_url },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+export function useCustomerPortal() {
+  const api = useApi()
+  return useMutation({
+    mutationFn: () => api.post('/api/billing/portal').then(r => r.data),
+    onSuccess: ({ portal_url }) => { window.location.href = portal_url },
     onError: (e) => toast.error(e.message),
   })
 }

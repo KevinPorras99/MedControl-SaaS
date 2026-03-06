@@ -12,6 +12,24 @@ class Settings(BaseSettings):
     whatsapp_phone_number_id: str = ""
     app_env: str = "development"
     app_port: int = 8000
+    # Stripe
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_profesional: str = ""
+    stripe_price_clinica: str = ""
+    # Frontend URL (para redirect URLs de Stripe y CORS en producción)
+    app_frontend_url: str = "http://localhost:5173"
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        """CORS origins permitidos según el entorno."""
+        if self.app_env == "production":
+            return [self.app_frontend_url]
+        return [
+            self.app_frontend_url,
+            "http://localhost:5173",
+            "http://localhost:3000",
+        ]
 
     class Config:
         env_file = ".env"

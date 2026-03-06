@@ -1,3 +1,4 @@
+import time
 from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -12,17 +13,25 @@ from app.models.user import User
 
 security = HTTPBearer()
 
-# Cache en memoria para no pedir las JWKS en cada request
-_jwks_cache: dict = {}
+# Cache en memoria con TTL de 1 hora para las JWKS de Clerk
+_JWKS_TTL = 3600  # segundos
+_jwks_cache: dict[str, tuple[dict, float]] = {}
 
 
 async def _get_jwks(issuer: str) -> dict:
-    if issuer not in _jwks_cache:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{issuer}/.well-known/jwks.json")
-            resp.raise_for_status()
-        _jwks_cache[issuer] = resp.json()
-    return _jwks_cache[issuer]
+    cached = _jwks_cache.get(issuer)
+    if cached:
+        data, fetched_at = cached
+        if time.monotonic() - fetched_at < _JWKS_TTL:
+            return data
+
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        resp = await client.get(f"{issuer}/.well-known/jwks.json")
+        resp.raise_for_status()
+
+    jwks = resp.json()
+    _jwks_cache[issuer] = (jwks, time.monotonic())
+    return jwks
 
 
 async def verify_clerk_token(

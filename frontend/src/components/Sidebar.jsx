@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useTheme } from '../hooks/useTheme'
 import {
   LayoutDashboard, Users, CalendarDays,
-  Receipt, Settings, Copy, Check, Moon, Sun
+  Receipt, Settings, Copy, Check, Moon, Sun, BarChart3
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -14,6 +14,7 @@ const NAV = [
   { to: '/patients',     icon: Users,           label: 'Pacientes' },
   { to: '/appointments', icon: CalendarDays,    label: 'Citas' },
   { to: '/invoices',     icon: Receipt,         label: 'Facturación' },
+  { to: '/reports',      icon: BarChart3,       label: 'Reportes' },
   { to: '/settings',     icon: Settings,        label: 'Configuración' },
 ]
 

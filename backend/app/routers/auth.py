@@ -1,3 +1,4 @@
+import re
 import uuid
 import secrets
 import string
@@ -10,11 +11,14 @@ from app.database import get_db
 from app.dependencies import verify_clerk_token
 from app.models.clinic import Clinic
 from app.models.user import User
-from app.schemas import UserOut, ClinicOut, ClinicPublic
-from pydantic import BaseModel, EmailStr
+from app.schemas import UserOut, ClinicOut
+from pydantic import BaseModel, EmailStr, field_validator
+from sqlalchemy.orm import selectinload
 
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
+
+_ACCESS_CODE_RE = re.compile(r'^[A-Z0-9]{6}$')
 
 
 def _generate_access_code(length: int = 6) -> str:
@@ -26,24 +30,41 @@ class OnboardingRequest(BaseModel):
     full_name: str
     email: EmailStr
     role: Literal["admin_clinic", "doctor", "receptionist"] = "admin_clinic"
-    clinic_name: str | None = None     # requerido si role == admin_clinic
-    clinic_id: uuid.UUID | None = None # requerido si role != admin_clinic
-    access_code: str | None = None     # requerido si role != admin_clinic
+    clinic_name: str | None = None
+    access_code: str | None = None  # requerido si role != admin_clinic
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) < 2 or len(v) > 200:
+            raise ValueError("El nombre debe tener entre 2 y 200 caracteres")
+        return v
+
+    @field_validator("clinic_name")
+    @classmethod
+    def validate_clinic_name(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.strip()
+        if len(v) < 2 or len(v) > 200:
+            raise ValueError("El nombre de la clínica debe tener entre 2 y 200 caracteres")
+        return v
+
+    @field_validator("access_code")
+    @classmethod
+    def validate_access_code_format(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.strip().upper()
+        if not _ACCESS_CODE_RE.match(v):
+            raise ValueError("El código de acceso debe tener exactamente 6 caracteres alfanuméricos")
+        return v
 
 
 class MeResponse(BaseModel):
     user: UserOut
     clinic: ClinicOut
-
-
-# ── Endpoint público: lista de clínicas para el dropdown de onboarding ──────
-@router.get("/clinics", response_model=list[ClinicPublic])
-async def list_clinics_public(db: Annotated[AsyncSession, Depends(get_db)]):
-    """Devuelve id + nombre de todas las clínicas activas (sin autenticación)."""
-    result = await db.execute(
-        select(Clinic).where(Clinic.is_active == True).order_by(Clinic.name)
-    )
-    return result.scalars().all()
 
 
 # ── Onboarding ───────────────────────────────────────────────────────────────
@@ -78,10 +99,25 @@ async def onboarding(
         await db.flush()
 
     else:
-        raise HTTPException(
-            status_code=403,
-            detail="Solo los administradores pueden registrar una clínica. Si sos doctor o recepcionista, pedile al administrador que te agregue desde Configuración → Equipo.",
+        # Doctor o recepcionista se unen a una clínica existente via código de acceso
+        if not body.access_code:
+            raise HTTPException(
+                status_code=422,
+                detail="Se requiere el código de acceso para unirse a una clínica.",
+            )
+
+        clinic_result = await db.execute(
+            select(Clinic).where(
+                Clinic.access_code == body.access_code.upper().strip(),
+                Clinic.is_active == True,
+            )
         )
+        clinic = clinic_result.scalar_one_or_none()
+        if not clinic:
+            raise HTTPException(
+                status_code=404,
+                detail="Código de acceso inválido o clínica no encontrada.",
+            )
 
     user = User(
         clerk_id=clerk_id,
@@ -104,14 +140,15 @@ async def get_me(
     token_data: Annotated[dict, Depends(verify_clerk_token)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Devuelve el perfil del usuario autenticado."""
+    """Devuelve el perfil del usuario autenticado (user + clinic en una sola query)."""
     clerk_id = token_data.get("sub")
-    result = await db.execute(select(User).where(User.clerk_id == clerk_id, User.is_active == True))
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.clinic))
+        .where(User.clerk_id == clerk_id, User.is_active == True)
+    )
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no registrado. Completa el onboarding.")
 
-    clinic_result = await db.execute(select(Clinic).where(Clinic.id == user.clinic_id))
-    clinic = clinic_result.scalar_one_or_none()
-
-    return MeResponse(user=UserOut.model_validate(user), clinic=ClinicOut.model_validate(clinic))
+    return MeResponse(user=UserOut.model_validate(user), clinic=ClinicOut.model_validate(user.clinic))

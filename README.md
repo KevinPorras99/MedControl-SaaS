@@ -61,6 +61,11 @@ App disponible en: http://localhost:5173
 | `CLERK_PUBLISHABLE_KEY` | Clave pública de Clerk |
 | `WHATSAPP_TOKEN` | Token de WhatsApp Cloud API (opcional) |
 | `WHATSAPP_PHONE_NUMBER_ID` | ID del número de WhatsApp (opcional) |
+| `STRIPE_SECRET_KEY` | Clave secreta de Stripe (`sk_live_...` o `sk_test_...`) |
+| `STRIPE_WEBHOOK_SECRET` | Secreto del webhook de Stripe (`whsec_...`) |
+| `STRIPE_PRICE_PROFESIONAL` | Price ID de Stripe para el plan Profesional |
+| `STRIPE_PRICE_CLINICA` | Price ID de Stripe para el plan Clínica |
+| `APP_FRONTEND_URL` | URL pública del frontend (default: `http://localhost:5173`) |
 
 ### Frontend (`frontend/.env.local`)
 
@@ -100,6 +105,8 @@ App disponible en: http://localhost:5173
 | Expedientes | Historial médico por paciente, inmutable |
 | Facturación | Emisión de facturas con múltiples servicios, IVA 13%, PDF imprimible |
 | Recordatorios | Logs de WhatsApp pendientes (envío manual o por worker externo) |
+| Reportes | Resumen financiero, ingresos por mes, top pacientes, exportación CSV |
+| Suscripciones | Planes Stripe (Básico / Profesional / Clínica), Customer Portal |
 
 ---
 
@@ -134,11 +141,26 @@ WHERE id = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
 
 ---
 
+## Migración de base de datos — Stripe
+
+Ejectar en el **SQL Editor de Supabase** al actualizar a esta versión:
+
+```sql
+ALTER TABLE clinics
+  ADD COLUMN IF NOT EXISTS stripe_customer_id    VARCHAR(255),
+  ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(255),
+  ADD COLUMN IF NOT EXISTS subscription_status    VARCHAR(50) DEFAULT 'inactive';
+
+CREATE INDEX IF NOT EXISTS idx_clinics_stripe_customer ON clinics(stripe_customer_id);
+```
+
+---
+
 ## Roadmap pendiente
 
 - [ ] Worker/cron para envío automático de recordatorios WhatsApp
-- [ ] Reportes financieros y exportación a CSV
-- [ ] Sistema de suscripciones (Stripe)
+- [x] Reportes financieros y exportación a CSV
+- [x] Sistema de suscripciones (Stripe)
 - [ ] Subida de archivos al expediente (Supabase Storage)
 - [ ] Facturación electrónica regional (Hacienda CR)
 - [ ] App móvil (React Native)

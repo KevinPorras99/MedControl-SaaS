@@ -16,6 +16,9 @@ class Clinic(Base):
         Enum("basico", "profesional", "clinica", name="subscription_plan"),
         nullable=False, default="basico"
     )
+    subscription_status: Mapped[str] = mapped_column(String(50), nullable=False, default="inactive")
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     email: Mapped[str | None] = mapped_column(String(255))
     phone: Mapped[str | None] = mapped_column(String(50))

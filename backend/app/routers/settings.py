@@ -83,7 +83,7 @@ async def _create_clerk_user(full_name: str, email: str, password: str) -> str:
 
 
 # ── GET equipo de la clínica ──────────────────────────────────────────────────
-@router.get("/users", response_model=list[UserOut])
+@router.get("/users", response_model=list[UserOut], dependencies=[RequireAdmin])
 async def list_team(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
