@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import {
   Users, CalendarDays, ClipboardList, Receipt,
   BarChart3, ShieldCheck, Check, X, ChevronRight,
-  Stethoscope, ArrowRight, Zap, Globe,
+  Stethoscope, ArrowRight, Globe, Activity,
 } from 'lucide-react'
 
 // ── Datos ─────────────────────────────────────────────────────────────────────
@@ -97,39 +97,58 @@ const PLANS = [
   },
 ]
 
-// ── Componentes internos ───────────────────────────────────────────────────────
+const STATS = [
+  { value: '2,400+', label: 'Clínicas activas' },
+  { value: '180K', label: 'Pacientes gestionados' },
+  { value: '99.9%', label: 'Uptime garantizado' },
+  { value: '< 2s', label: 'Tiempo de respuesta' },
+]
+
+// ── Estilos base ───────────────────────────────────────────────────────────────
+
+const SECTION_BG = { background: 'rgba(8,8,8,0.82)', backdropFilter: 'blur(2px)' }
+const HEADER_BG  = { background: 'rgba(8,8,8,0.88)', backdropFilter: 'blur(20px)' }
+const FOOTER_BG  = { background: 'rgba(8,8,8,0.92)' }
+const CARD_BG    = { background: 'rgba(14,14,14,0.90)' }
+
+// ── Componentes ────────────────────────────────────────────────────────────────
 
 function Header() {
   return (
-    <header className="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-white/10 border-b border-white/20 dark:bg-black/20">
+    <header
+      className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.07]"
+      style={HEADER_BG}
+    >
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5">
-          <Stethoscope size={22} className="text-yellow-500" />
-          <span className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">MedControl</span>
+          <div className="w-7 h-7 rounded-lg bg-orange-500 flex items-center justify-center shrink-0">
+            <Stethoscope size={13} className="text-white" />
+          </div>
+          <span className="text-[15px] font-semibold text-white tracking-tight">MedControl</span>
         </Link>
 
         {/* Nav */}
         <nav className="hidden md:flex items-center gap-8">
-          <a href="#features" className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
+          <a href="#features" className="text-sm text-gray-400 hover:text-white transition-colors duration-150">
             Funcionalidades
           </a>
-          <a href="#pricing" className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
+          <a href="#pricing" className="text-sm text-gray-400 hover:text-white transition-colors duration-150">
             Planes
           </a>
         </nav>
 
-        {/* Auth buttons */}
-        <div className="flex items-center gap-3">
+        {/* Auth */}
+        <div className="flex items-center gap-2">
           <Link
             to="/login"
-            className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/20"
+            className="text-sm text-gray-400 hover:text-white transition-colors duration-150 px-3 py-1.5"
           >
             Iniciar sesión
           </Link>
           <Link
             to="/login"
-            className="flex items-center gap-1.5 text-sm font-semibold bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white px-4 py-2 rounded-xl shadow-md shadow-yellow-500/25 transition-all"
+            className="flex items-center gap-1.5 text-sm font-medium bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors duration-150"
           >
             Empezar gratis
             <ChevronRight size={14} />
@@ -142,50 +161,80 @@ function Header() {
 
 function Hero() {
   return (
-    <section className="pt-36 pb-24 px-6 text-center relative">
-      <div className="max-w-3xl mx-auto">
+    <section className="relative pt-44 pb-28 px-6 text-center overflow-hidden" style={SECTION_BG}>
+      {/* Ambient glow */}
+      <div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[320px] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse, rgba(249,115,22,0.12) 0%, transparent 70%)' }}
+      />
+
+      <div className="relative max-w-3xl mx-auto">
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 text-yellow-700 dark:text-yellow-400 text-xs font-semibold px-4 py-1.5 rounded-full mb-8">
-          <Zap size={12} />
+        <div className="inline-flex items-center gap-2 border border-orange-500/25 bg-orange-500/[0.08] text-orange-400 text-xs font-medium px-3.5 py-1.5 rounded-full mb-8">
+          <Activity size={11} />
           Sistema de gestión clínica todo-en-uno
         </div>
 
         {/* Headline */}
-        <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 dark:text-white leading-tight tracking-tight mb-6">
+        <h1 className="text-5xl md:text-[64px] font-bold text-white leading-[1.08] tracking-tight mb-6">
           Tu clínica,{' '}
-          <span className="bg-gradient-to-r from-yellow-500 to-yellow-600 bg-clip-text text-transparent">
-            organizada y rentable
-          </span>
+          <span className="text-orange-400">organizada</span>
+          {' '}y rentable
         </h1>
 
-        <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-2xl mx-auto mb-10">
+        <p className="text-base md:text-[17px] text-gray-400 leading-relaxed max-w-xl mx-auto mb-10">
           Gestión de pacientes, citas, historial clínico y facturación en una sola plataforma.
           Diseñado para médicos que quieren enfocarse en sus pacientes, no en el papeleo.
         </p>
 
         {/* CTAs */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
           <Link
             to="/login"
-            className="flex items-center gap-2 text-base font-semibold bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white px-7 py-3.5 rounded-xl shadow-lg shadow-yellow-500/30 transition-all"
+            className="flex items-center gap-2 text-sm font-medium bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg transition-colors duration-150"
           >
             Crear clínica gratis
-            <ArrowRight size={16} />
+            <ArrowRight size={15} />
           </Link>
           <a
             href="#pricing"
-            className="flex items-center gap-2 text-base font-semibold text-gray-700 dark:text-gray-300 bg-white/30 dark:bg-white/10 hover:bg-white/50 dark:hover:bg-white/20 border border-gray-300/50 dark:border-white/20 px-7 py-3.5 rounded-xl backdrop-blur-md transition-all"
+            className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-white border border-white/[0.10] hover:border-white/[0.18] bg-white/[0.04] hover:bg-white/[0.07] px-6 py-3 rounded-lg transition-all duration-150"
           >
             Ver planes
           </a>
         </div>
 
         {/* Trust badges */}
-        <div className="mt-12 flex flex-wrap justify-center gap-6 text-sm text-gray-500 dark:text-gray-400">
-          <span className="flex items-center gap-1.5"><Check size={14} className="text-green-500" /> Sin tarjeta de crédito</span>
-          <span className="flex items-center gap-1.5"><Check size={14} className="text-green-500" /> 14 días gratis</span>
-          <span className="flex items-center gap-1.5"><Check size={14} className="text-green-500" /> Cancela cuando quieras</span>
-          <span className="flex items-center gap-1.5"><Globe size={14} className="text-green-500" /> 100% en la nube</span>
+        <div className="mt-12 flex flex-wrap justify-center gap-6 text-xs text-gray-500">
+          <span className="flex items-center gap-1.5">
+            <Check size={12} className="text-green-500" /> Sin tarjeta de crédito
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Check size={12} className="text-green-500" /> 14 días gratis
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Check size={12} className="text-green-500" /> Cancela cuando quieras
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Globe size={12} className="text-green-500" /> 100% en la nube
+          </span>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function Stats() {
+  return (
+    <section className="border-y border-white/[0.06]" style={{ background: 'rgba(255,255,255,0.015)' }}>
+      <div className="max-w-5xl mx-auto px-6 py-14">
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-white/[0.06]">
+          {STATS.map(({ value, label }) => (
+            <div key={label} className="text-center px-6">
+              <div className="text-[32px] font-bold text-white tracking-tight mb-1">{value}</div>
+              <div className="text-[11px] text-gray-500 uppercase tracking-widest">{label}</div>
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -194,28 +243,36 @@ function Hero() {
 
 function Features() {
   return (
-    <section id="features" className="py-24 px-6">
+    <section id="features" className="py-28 px-6" style={SECTION_BG}>
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-14">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+        <div className="text-center mb-16">
+          <div className="text-[11px] text-orange-400 font-semibold uppercase tracking-[0.15em] mb-4">
+            Funcionalidades
+          </div>
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">
             Todo lo que tu clínica necesita
           </h2>
-          <p className="text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
-            Una plataforma completa que cubre el ciclo completo de atención, desde la cita hasta el cobro.
+          <p className="text-gray-500 max-w-md mx-auto text-sm leading-relaxed">
+            Una plataforma que cubre el ciclo completo de atención, desde la cita hasta el cobro.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Grid-cell layout */}
+        <div
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 rounded-2xl overflow-hidden border border-white/[0.07]"
+          style={{ gap: '1px', background: 'rgba(255,255,255,0.07)' }}
+        >
           {FEATURES.map(({ icon: Icon, title, desc }) => (
             <div
               key={title}
-              className="group bg-white/40 dark:bg-white/5 backdrop-blur-md border border-white/50 dark:border-white/10 rounded-2xl p-6 hover:bg-white/60 dark:hover:bg-white/10 hover:shadow-xl hover:-translate-y-1 transition-all duration-200"
+              className="group p-8 hover:bg-white/[0.025] transition-colors duration-200 cursor-default"
+              style={CARD_BG}
             >
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center mb-4 shadow-md shadow-yellow-500/25">
-                <Icon size={20} className="text-white" />
+              <div className="w-9 h-9 rounded-lg bg-orange-500/[0.10] border border-orange-500/[0.20] flex items-center justify-center mb-5 group-hover:bg-orange-500/[0.15] transition-colors duration-200">
+                <Icon size={16} className="text-orange-400" />
               </div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{desc}</p>
+              <h3 className="text-sm font-semibold text-white mb-2">{title}</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">{desc}</p>
             </div>
           ))}
         </div>
@@ -226,53 +283,61 @@ function Features() {
 
 function Pricing() {
   return (
-    <section id="pricing" className="py-24 px-6">
+    <section id="pricing" className="py-28 px-6 border-t border-white/[0.06]" style={SECTION_BG}>
       <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-14">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+        <div className="text-center mb-16">
+          <div className="text-[11px] text-orange-400 font-semibold uppercase tracking-[0.15em] mb-4">
+            Planes
+          </div>
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">
             Planes para cada clínica
           </h2>
-          <p className="text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
+          <p className="text-gray-500 max-w-sm mx-auto text-sm leading-relaxed">
             Empezá gratis por 14 días. Sin permanencia. Sin letras chicas.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
           {PLANS.map((plan) => (
             <div
               key={plan.key}
-              className={`relative rounded-2xl p-7 flex flex-col gap-5 backdrop-blur-md transition-all ${
+              className={`relative rounded-2xl p-7 flex flex-col gap-6 border transition-all duration-200 ${
                 plan.highlight
-                  ? 'bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 border-2 border-yellow-500/60 shadow-2xl shadow-yellow-500/20 scale-105'
-                  : 'bg-white/40 dark:bg-white/5 border border-white/50 dark:border-white/10'
+                  ? 'border-orange-500/40 shadow-[0_0_40px_rgba(249,115,22,0.08)]'
+                  : 'border-white/[0.07]'
               }`}
+              style={{
+                background: plan.highlight
+                  ? 'rgba(249,115,22,0.05)'
+                  : 'rgba(14,14,14,0.90)',
+              }}
             >
               {plan.highlight && (
-                <div className="absolute -top-3.5 left-0 right-0 flex justify-center">
-                  <span className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white text-xs font-bold px-4 py-1 rounded-full shadow-md">
-                    MÁS POPULAR
+                <div className="absolute -top-3.5 inset-x-0 flex justify-center">
+                  <span className="bg-orange-500 text-white text-[10px] font-bold px-3.5 py-1 rounded-full uppercase tracking-wider">
+                    Más popular
                   </span>
                 </div>
               )}
 
               <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">{plan.name}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{plan.desc}</p>
+                <h3 className="text-sm font-semibold text-white">{plan.name}</h3>
+                <p className="text-xs text-gray-500 mt-1">{plan.desc}</p>
               </div>
 
               <div className="flex items-end gap-1">
-                <span className="text-4xl font-extrabold text-gray-900 dark:text-white">{plan.price}</span>
-                <span className="text-gray-500 dark:text-gray-400 mb-1 text-sm">{plan.period}</span>
+                <span className="text-[42px] font-bold text-white leading-none">{plan.price}</span>
+                <span className="text-gray-500 mb-1.5 text-sm">{plan.period}</span>
               </div>
 
-              <ul className="space-y-2.5 flex-1">
+              <ul className="space-y-3 flex-1">
                 {plan.features.map((f) => (
-                  <li key={f.text} className="flex items-center gap-2.5 text-sm">
+                  <li key={f.text} className="flex items-center gap-2.5 text-xs">
                     {f.included
-                      ? <Check size={15} className="text-green-500 shrink-0" />
-                      : <X size={15} className="text-gray-300 dark:text-gray-600 shrink-0" />
+                      ? <Check size={13} className="text-green-500 shrink-0" />
+                      : <X size={13} className="text-white/20 shrink-0" />
                     }
-                    <span className={f.included ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-600'}>
+                    <span className={f.included ? 'text-gray-300' : 'text-gray-600'}>
                       {f.text}
                     </span>
                   </li>
@@ -281,10 +346,10 @@ function Pricing() {
 
               <Link
                 to="/login"
-                className={`w-full text-center py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                className={`w-full text-center py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 ${
                   plan.highlight
-                    ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white shadow-md shadow-yellow-500/30'
-                    : 'bg-white/50 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/20 border border-gray-300/60 dark:border-white/20 text-gray-800 dark:text-white'
+                    ? 'bg-orange-500 hover:bg-orange-600 text-white'
+                    : 'bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.09] text-gray-300 hover:text-white'
                 }`}
               >
                 {plan.cta}
@@ -299,30 +364,33 @@ function Pricing() {
 
 function Footer() {
   return (
-    <footer className="border-t border-white/20 dark:border-white/10 backdrop-blur-md bg-white/10 dark:bg-black/10">
-      <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-4">
+    <footer className="border-t border-white/[0.07]" style={FOOTER_BG}>
+      <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <Stethoscope size={18} className="text-yellow-500" />
-          <span className="font-bold text-gray-800 dark:text-white">MedControl</span>
-          <span className="text-gray-400 text-sm ml-2">© {new Date().getFullYear()}</span>
+          <div className="w-6 h-6 rounded-md bg-orange-500 flex items-center justify-center shrink-0">
+            <Stethoscope size={11} className="text-white" />
+          </div>
+          <span className="text-sm font-semibold text-white">MedControl</span>
+          <span className="text-gray-600 text-xs ml-2">© {new Date().getFullYear()}</span>
         </div>
-        <div className="flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
-          <a href="#features" className="hover:text-gray-800 dark:hover:text-white transition-colors">Funcionalidades</a>
-          <a href="#pricing" className="hover:text-gray-800 dark:hover:text-white transition-colors">Planes</a>
-          <Link to="/login" className="hover:text-gray-800 dark:hover:text-white transition-colors">Iniciar sesión</Link>
+        <div className="flex items-center gap-6 text-xs text-gray-500">
+          <a href="#features" className="hover:text-gray-300 transition-colors duration-150">Funcionalidades</a>
+          <a href="#pricing" className="hover:text-gray-300 transition-colors duration-150">Planes</a>
+          <Link to="/login" className="hover:text-gray-300 transition-colors duration-150">Iniciar sesión</Link>
         </div>
       </div>
     </footer>
   )
 }
 
-// ── Página principal ───────────────────────────────────────────────────────────
+// ── Página ─────────────────────────────────────────────────────────────────────
 
 export default function Landing() {
   return (
     <div className="min-h-screen">
       <Header />
       <Hero />
+      <Stats />
       <Features />
       <Pricing />
       <Footer />

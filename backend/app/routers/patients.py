@@ -31,7 +31,7 @@ async def list_patients(
     return result.scalars().all()
 
 
-@router.post("", response_model=PatientOut, status_code=status.HTTP_201_CREATED, dependencies=[RequireReception])
+@router.post("", response_model=PatientOut, status_code=status.HTTP_201_CREATED, dependencies=[RequireAnyRole])
 async def create_patient(
     body: PatientCreate,
     current_user: CurrentUser,

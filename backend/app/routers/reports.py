@@ -1,6 +1,6 @@
 import csv
 import io
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
@@ -10,11 +10,105 @@ from sqlalchemy import select, func
 
 from app.database import get_db
 from app.dependencies import CurrentUser, RequireAnyRole
+from app.models.appointment import Appointment
 from app.models.invoice import Invoice
 from app.models.payment import Payment
 from app.models.patient import Patient
 
 router = APIRouter(prefix="/api/reports", tags=["Reportes"])
+
+
+@router.get("/dashboard", dependencies=[RequireAnyRole])
+async def dashboard_stats(
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Stats agregadas para el dashboard: ingresos mensuales, citas por semana y nuevos pacientes por mes."""
+    clinic_id = current_user.clinic_id
+    today = datetime.utcnow().date()
+
+    # ── Ingresos últimos 6 meses ─────────────────────────────────────────
+    monthly_rev_res = await db.execute(
+        select(
+            func.to_char(Payment.paid_at, "YYYY-MM").label("month"),
+            func.coalesce(func.sum(Payment.amount), 0).label("total"),
+        )
+        .where(Payment.clinic_id == clinic_id)
+        .group_by(func.to_char(Payment.paid_at, "YYYY-MM"))
+        .order_by(func.to_char(Payment.paid_at, "YYYY-MM").desc())
+        .limit(6)
+    )
+    monthly_revenue = list(reversed([
+        {"month": row[0], "total": float(row[1])}
+        for row in monthly_rev_res.all()
+    ]))
+
+    # ── Citas por día de la semana actual (lun-dom) ───────────────────────
+    week_start = today - timedelta(days=today.weekday())  # Monday
+    week_end = week_start + timedelta(days=6)             # Sunday
+    appt_week_res = await db.execute(
+        select(
+            func.date(Appointment.appointment_date).label("day"),
+            func.count(Appointment.id).label("count"),
+        )
+        .where(
+            Appointment.clinic_id == clinic_id,
+            func.date(Appointment.appointment_date) >= week_start,
+            func.date(Appointment.appointment_date) <= week_end,
+        )
+        .group_by(func.date(Appointment.appointment_date))
+        .order_by(func.date(Appointment.appointment_date))
+    )
+    appt_by_day_map = {str(row[0]): row[1] for row in appt_week_res.all()}
+    day_names = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+    weekly_appointments = [
+        {
+            "day": day_names[i],
+            "citas": appt_by_day_map.get(str(week_start + timedelta(days=i)), 0),
+        }
+        for i in range(7)
+    ]
+
+    # ── Nuevos pacientes últimos 6 meses ─────────────────────────────────
+    new_patients_res = await db.execute(
+        select(
+            func.to_char(Patient.created_at, "YYYY-MM").label("month"),
+            func.count(Patient.id).label("count"),
+        )
+        .where(Patient.clinic_id == clinic_id)
+        .group_by(func.to_char(Patient.created_at, "YYYY-MM"))
+        .order_by(func.to_char(Patient.created_at, "YYYY-MM").desc())
+        .limit(6)
+    )
+    new_patients = list(reversed([
+        {"month": row[0], "count": row[1]}
+        for row in new_patients_res.all()
+    ]))
+
+    # ── Citas de este mes por estado ─────────────────────────────────────
+    month_start = today.replace(day=1)
+    appt_status_res = await db.execute(
+        select(
+            Appointment.status,
+            func.count(Appointment.id).label("count"),
+        )
+        .where(
+            Appointment.clinic_id == clinic_id,
+            func.date(Appointment.appointment_date) >= month_start,
+        )
+        .group_by(Appointment.status)
+    )
+    appointments_by_status = [
+        {"status": row[0], "count": row[1]}
+        for row in appt_status_res.all()
+    ]
+
+    return {
+        "monthly_revenue": monthly_revenue,
+        "weekly_appointments": weekly_appointments,
+        "new_patients": new_patients,
+        "appointments_by_status": appointments_by_status,
+    }
 
 
 @router.get("/financial", dependencies=[RequireAnyRole])

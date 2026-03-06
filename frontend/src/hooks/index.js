@@ -189,6 +189,15 @@ export function useRegisterPayment() {
 }
 
 // ── Reports ───────────────────────────────────────
+export function useDashboardStats() {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['reports', 'dashboard'],
+    queryFn: () => api.get('/api/reports/dashboard').then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export function useFinancialReport({ dateFrom, dateTo } = {}) {
   const api = useApi()
   return useQuery({
