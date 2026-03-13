@@ -6,6 +6,7 @@ from app.routers.invoices import router as invoices_router
 from app.routers.settings import router as settings_router
 from app.routers.reports import router as reports_router
 from app.routers.assistant import router as assistant_router
+from app.routers.audit import router as audit_router
 # from app.routers.billing import router as billing_router  # deshabilitado hasta configurar Stripe
 
 __all__ = [
@@ -17,4 +18,5 @@ __all__ = [
     "settings_router",
     "reports_router",
     "assistant_router",
+    "audit_router",
 ]

@@ -345,7 +345,7 @@ function Pricing() {
               </ul>
 
               <Link
-                to="/login"
+                to={`/checkout/${plan.key}`}
                 className={`w-full text-center py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 ${
                   plan.highlight
                     ? 'bg-orange-500 hover:bg-orange-600 text-white'

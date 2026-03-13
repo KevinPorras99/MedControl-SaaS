@@ -14,6 +14,7 @@ from app.models.appointment import Appointment
 from app.models.invoice import Invoice
 from app.models.payment import Payment
 from app.models.patient import Patient
+from app.models.user import User
 
 router = APIRouter(prefix="/api/reports", tags=["Reportes"])
 
@@ -290,3 +291,155 @@ async def export_payments_csv(
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+@router.get("/appointments", dependencies=[RequireAnyRole])
+async def appointments_report(
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
+    doctor_id: str | None = Query(None),
+):
+    """Reporte de citas: totales, por estado, por médico y tendencia mensual."""
+    clinic_id = current_user.clinic_id
+    filters = [Appointment.clinic_id == clinic_id]
+    if date_from:
+        filters.append(func.date(Appointment.appointment_date) >= date_from)
+    if date_to:
+        filters.append(func.date(Appointment.appointment_date) <= date_to)
+    if doctor_id:
+        import uuid as _uuid
+        filters.append(Appointment.doctor_id == _uuid.UUID(doctor_id))
+
+    # Total por estado
+    by_status_res = await db.execute(
+        select(Appointment.status, func.count(Appointment.id).label("count"))
+        .where(*filters)
+        .group_by(Appointment.status)
+    )
+    by_status = [{"status": r[0], "count": r[1]} for r in by_status_res.all()]
+
+    # Total general
+    total_res = await db.execute(
+        select(func.count(Appointment.id)).where(*filters)
+    )
+    total = total_res.scalar() or 0
+
+    # Por médico
+    by_doctor_res = await db.execute(
+        select(User.full_name, func.count(Appointment.id).label("count"))
+        .join(User, Appointment.doctor_id == User.id)
+        .where(*filters)
+        .group_by(User.id, User.full_name)
+        .order_by(func.count(Appointment.id).desc())
+    )
+    by_doctor = [{"doctor": r[0], "count": r[1]} for r in by_doctor_res.all()]
+
+    # Tendencia mensual
+    monthly_res = await db.execute(
+        select(
+            func.to_char(Appointment.appointment_date, "YYYY-MM").label("month"),
+            func.count(Appointment.id).label("count"),
+        )
+        .where(*filters)
+        .group_by(text("1"))
+        .order_by(text("1 ASC"))
+        .limit(13)
+    )
+    monthly = [{"month": r[0], "count": r[1]} for r in monthly_res.all()]
+
+    return {
+        "total": total,
+        "by_status": by_status,
+        "by_doctor": by_doctor,
+        "monthly": monthly,
+    }
+
+
+@router.get("/patients", dependencies=[RequireAnyRole])
+async def patients_report(
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
+):
+    """Reporte de pacientes: crecimiento mensual, distribución por género."""
+    clinic_id = current_user.clinic_id
+    filters = [Patient.clinic_id == clinic_id, Patient.is_active == True]
+    if date_from:
+        filters.append(func.date(Patient.created_at) >= date_from)
+    if date_to:
+        filters.append(func.date(Patient.created_at) <= date_to)
+
+    total_res = await db.execute(select(func.count(Patient.id)).where(*filters))
+    total = total_res.scalar() or 0
+
+    # Por género
+    by_gender_res = await db.execute(
+        select(Patient.gender, func.count(Patient.id).label("count"))
+        .where(*filters)
+        .group_by(Patient.gender)
+    )
+    by_gender = [{"gender": r[0] or "no especificado", "count": r[1]} for r in by_gender_res.all()]
+
+    # Crecimiento mensual
+    monthly_res = await db.execute(
+        select(
+            func.to_char(Patient.created_at, "YYYY-MM").label("month"),
+            func.count(Patient.id).label("count"),
+        )
+        .where(*filters)
+        .group_by(text("1"))
+        .order_by(text("1 ASC"))
+        .limit(13)
+    )
+    monthly = [{"month": r[0], "count": r[1]} for r in monthly_res.all()]
+
+    return {
+        "total": total,
+        "by_gender": by_gender,
+        "monthly": monthly,
+    }
+
+
+@router.get("/doctors", dependencies=[RequireAnyRole])
+async def doctors_report(
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
+):
+    """Reporte por médico: citas atendidas, pacientes únicos e ingresos generados."""
+    clinic_id = current_user.clinic_id
+
+    appt_filters = [Appointment.clinic_id == clinic_id]
+    if date_from:
+        appt_filters.append(func.date(Appointment.appointment_date) >= date_from)
+    if date_to:
+        appt_filters.append(func.date(Appointment.appointment_date) <= date_to)
+
+    # Citas por médico
+    by_doctor_res = await db.execute(
+        select(
+            User.id,
+            User.full_name,
+            func.count(Appointment.id).label("total_appointments"),
+            func.count(func.distinct(Appointment.patient_id)).label("unique_patients"),
+        )
+        .join(Appointment, Appointment.doctor_id == User.id, isouter=True)
+        .where(User.clinic_id == clinic_id, User.role == "doctor", User.is_active == True)
+        .group_by(User.id, User.full_name)
+        .order_by(func.count(Appointment.id).desc())
+    )
+
+    doctors = []
+    for row in by_doctor_res.all():
+        doctors.append({
+            "doctor_id": str(row.id),
+            "doctor_name": row.full_name,
+            "total_appointments": row.total_appointments,
+            "unique_patients": row.unique_patients,
+        })
+
+    return {"doctors": doctors}

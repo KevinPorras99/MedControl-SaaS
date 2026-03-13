@@ -19,6 +19,7 @@ async def list_appointments(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
     doctor_id: uuid.UUID | None = None,
+    patient_id: uuid.UUID | None = None,
     status: str | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
@@ -33,6 +34,8 @@ async def list_appointments(
     elif doctor_id:
         q = q.where(Appointment.doctor_id == doctor_id)
 
+    if patient_id:
+        q = q.where(Appointment.patient_id == patient_id)
     if status:
         q = q.where(Appointment.status == status)
     if date_from:

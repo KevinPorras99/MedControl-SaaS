@@ -16,7 +16,9 @@
       "Bash(py -3.11 -c \"from apscheduler.schedulers.asyncio import AsyncIOScheduler; print\\(''OK''\\)\")",
       "Bash(\"/c/Users/DELL/AppData/Local/Packages/PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0/LocalCache/Roaming/Microsoft/WindowsApps/python3.11.exe\" -m pip install apscheduler==3.10.4 --quiet)",
       "Bash(cmd /c \"pip install apscheduler==3.10.4 && python -c \"\"from apscheduler.schedulers.asyncio import AsyncIOScheduler; print\\(''OK''\\)\"\"\")",
-      "Bash(python -c \"from app.services.scheduler import start_scheduler, stop_scheduler; from app.main import app; print\\(''Backend imports OK''\\)\")"
+      "Bash(python -c \"from app.services.scheduler import start_scheduler, stop_scheduler; from app.main import app; print\\(''Backend imports OK''\\)\")",
+      "Bash(python3 \"c:/Users/DELL/OneDrive/Desktop/Proyectos 2026/MedControl-SaaS/.claude/skills/ui-ux-pro-max/scripts/search.py\" \"medical saas pricing payment checkout subscription plan\" --design-system -p \"MedControl\" -f markdown)",
+      "Bash(python \"c:/Users/DELL/OneDrive/Desktop/Proyectos 2026/MedControl-SaaS/.claude/skills/ui-ux-pro-max/scripts/search.py\" \"medical saas pricing payment checkout subscription plan\" --design-system -p \"MedControl\" -f markdown)"
     ],
     "additionalDirectories": [
       "c:\\Users\\DELL\\.claude\\projects\\c--Users-DELL-OneDrive-Desktop-MedControl-SaaS",

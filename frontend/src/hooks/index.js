@@ -279,3 +279,87 @@ export function useCustomerPortal() {
     onError: (e) => toast.error(e.message),
   })
 }
+
+// ── Clinic settings ───────────────────────────────
+export function useClinicSettings() {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['clinic'],
+    queryFn: () => api.get('/api/settings/clinic').then(r => r.data),
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
+export function useUpdateClinic() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => api.patch('/api/settings/clinic', data).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries(['clinic']); qc.invalidateQueries(['me']); toast.success('Clínica actualizada') },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+// ── Doctors ───────────────────────────────────────
+export function useDoctors() {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['doctors'],
+    queryFn: () => api.get('/api/settings/users').then(r => r.data?.filter(u => u.role === 'doctor') ?? []),
+  })
+}
+
+export function useUpdateTeamMember() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...data }) => api.patch(`/api/settings/users/${id}`, data).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries(['team']); qc.invalidateQueries(['doctors']); toast.success('Usuario actualizado') },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+// ── Audit logs ────────────────────────────────────
+export function useAuditLogs({ dateFrom, dateTo } = {}) {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['audit', dateFrom, dateTo],
+    queryFn: () => api.get('/api/audit', {
+      params: { date_from: dateFrom || undefined, date_to: dateTo || undefined }
+    }).then(r => r.data),
+    staleTime: 1000 * 60 * 2,
+  })
+}
+
+// ── Reports: Appointments ─────────────────────────
+export function useAppointmentsReport({ dateFrom, dateTo, doctorId } = {}) {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['reports', 'appointments', dateFrom, dateTo, doctorId],
+    queryFn: () => api.get('/api/reports/appointments', {
+      params: { date_from: dateFrom || undefined, date_to: dateTo || undefined, doctor_id: doctorId || undefined }
+    }).then(r => r.data),
+  })
+}
+
+// ── Reports: Patients ─────────────────────────────
+export function usePatientsReport({ dateFrom, dateTo } = {}) {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['reports', 'patients', dateFrom, dateTo],
+    queryFn: () => api.get('/api/reports/patients', {
+      params: { date_from: dateFrom || undefined, date_to: dateTo || undefined }
+    }).then(r => r.data),
+  })
+}
+
+// ── Reports: Doctors ──────────────────────────────
+export function useDoctorsReport({ dateFrom, dateTo } = {}) {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['reports', 'doctors', dateFrom, dateTo],
+    queryFn: () => api.get('/api/reports/doctors', {
+      params: { date_from: dateFrom || undefined, date_to: dateTo || undefined }
+    }).then(r => r.data),
+  })
+}

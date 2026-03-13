@@ -109,6 +109,23 @@ export default function MedicalRecordsPage() {
   const { data: records, isLoading } = useMedicalRecords(patientId)
   const createRecord = useCreateRecord()
 
+  // Si no hay patientId, mostrar pantalla de búsqueda
+  if (!patientId) {
+    return (
+      <div>
+        <div className="animate-fade-in-down">
+          <PageHeader title="Historial Clínico" subtitle="Seleccioná un paciente para ver su expediente" />
+        </div>
+        <EmptyState
+          icon={FileText}
+          title="Seleccioná un paciente"
+          description="Buscá un paciente en la sección de Pacientes y accedé a su expediente desde su perfil."
+          action={<Button onClick={() => window.location.href = '/patients'}>Ir a Pacientes</Button>}
+        />
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="animate-fade-in-down">

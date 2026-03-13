@@ -85,8 +85,8 @@ export default function PatientsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={() => navigate(`/records/${p.id}`)}>
-                        <FileText size={13} /> Expediente
+                      <Button size="sm" variant="outline" onClick={() => navigate(`/patients/${p.id}`)}>
+                        <FileText size={13} /> Ver perfil
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => setSelected(p)}>Editar</Button>
                     </div>

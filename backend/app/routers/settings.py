@@ -11,7 +11,8 @@ from app.config import settings
 from app.database import get_db
 from app.dependencies import CurrentUser, RequireAdmin
 from app.models.user import User
-from app.schemas import UserOut
+from app.models.clinic import Clinic
+from app.schemas import UserOut, ClinicOut, ClinicUpdate, UserUpdate
 
 router = APIRouter(prefix="/api/settings", tags=["Configuración"])
 
@@ -144,3 +145,61 @@ async def remove_team_member(
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
 
     member.is_active = False
+
+
+# ── GET datos de la clínica ───────────────────────────────────────────────────
+@router.get("/clinic", response_model=ClinicOut, dependencies=[RequireAdmin])
+async def get_clinic_settings(
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await db.execute(
+        select(Clinic).where(Clinic.id == current_user.clinic_id)
+    )
+    clinic = result.scalar_one_or_none()
+    if not clinic:
+        raise HTTPException(status_code=404, detail="Clínica no encontrada.")
+    return clinic
+
+
+# ── PATCH actualizar datos de la clínica ──────────────────────────────────────
+@router.patch("/clinic", response_model=ClinicOut, dependencies=[RequireAdmin])
+async def update_clinic_settings(
+    body: ClinicUpdate,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await db.execute(
+        select(Clinic).where(Clinic.id == current_user.clinic_id)
+    )
+    clinic = result.scalar_one_or_none()
+    if not clinic:
+        raise HTTPException(status_code=404, detail="Clínica no encontrada.")
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(clinic, field, value)
+    await db.flush()
+    await db.refresh(clinic)
+    return clinic
+
+
+# ── PATCH actualizar rol o estado de usuario ──────────────────────────────────
+@router.patch("/users/{user_id}", response_model=UserOut, dependencies=[RequireAdmin])
+async def update_team_member(
+    user_id: uuid.UUID,
+    body: UserUpdate,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="No podés modificar tu propia cuenta.")
+    result = await db.execute(
+        select(User).where(User.id == user_id, User.clinic_id == current_user.clinic_id)
+    )
+    member = result.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(member, field, value)
+    await db.flush()
+    await db.refresh(member)
+    return member
