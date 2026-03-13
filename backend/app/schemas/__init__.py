@@ -174,6 +174,9 @@ class AppointmentOut(BaseModel):
     notes: str | None
     created_at: datetime
     updated_at: datetime
+    # Campos enriquecidos desde JOIN – nunca calculados en frontend
+    patient_name: str | None = None
+    doctor_name: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -223,26 +226,49 @@ class MedicalRecordOut(BaseModel):
 
 
 # ── Invoice ───────────────────────────────────────
-class InvoiceCreate(BaseModel):
-    patient_id: uuid.UUID
-    subtotal: Decimal
-    tax: Decimal = Decimal("0")
-    notes: str | None = None
+class InvoiceItemIn(BaseModel):
+    """Un ítem de factura tal como llega del frontend."""
+    description: str
+    quantity: int = 1
+    unit_price: Decimal
 
-    @field_validator("subtotal", "tax")
+    @field_validator("description")
     @classmethod
-    def validate_amount(cls, v: Decimal) -> Decimal:
-        if v < 0:
-            raise ValueError("Los montos no pueden ser negativos")
-        if v > Decimal("9999999.99"):
-            raise ValueError("El monto excede el límite permitido")
+    def validate_description(cls, v: str) -> str:
+        v = v.strip()
+        if not v or len(v) > 500:
+            raise ValueError("La descripción debe tener entre 1 y 500 caracteres")
         return v
 
-    @field_validator("notes")
+    @field_validator("quantity")
     @classmethod
-    def validate_notes(cls, v: str | None) -> str | None:
-        if v and len(v) > 1000:
-            raise ValueError("Las notas no pueden superar 1000 caracteres")
+    def validate_quantity(cls, v: int) -> int:
+        if v < 1 or v > 9999:
+            raise ValueError("La cantidad debe estar entre 1 y 9999")
+        return v
+
+    @field_validator("unit_price")
+    @classmethod
+    def validate_price(cls, v: Decimal) -> Decimal:
+        if v < 0:
+            raise ValueError("El precio no puede ser negativo")
+        if v > Decimal("9999999.99"):
+            raise ValueError("El precio excede el límite permitido")
+        return v
+
+
+class InvoiceCreate(BaseModel):
+    """El frontend solo envía paciente e ítems; el backend calcula todos los montos."""
+    patient_id: uuid.UUID
+    items: list[InvoiceItemIn]
+
+    @field_validator("items")
+    @classmethod
+    def validate_items(cls, v: list) -> list:
+        if not v:
+            raise ValueError("La factura debe tener al menos un ítem")
+        if len(v) > 50:
+            raise ValueError("La factura no puede tener más de 50 ítems")
         return v
 
 

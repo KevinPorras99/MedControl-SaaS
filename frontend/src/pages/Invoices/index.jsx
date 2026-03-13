@@ -6,7 +6,9 @@ import { useInvoices, useCreateInvoice, useRegisterPayment, usePatients } from '
 import { Button, PageHeader, Card, Modal, Input, Select, Badge, Spinner, EmptyState } from '../../components/ui'
 import { printInvoice } from '../../lib/print-invoice'
 
-const IVA_RATE = 0.13
+// IVA_RATE se maneja en el backend (/api/config y routers/invoices.py)
+// Aquí solo se usa para preview visual en el formulario — el backend recalcula y es la fuente de verdad
+const IVA_RATE_DISPLAY = 0.13
 const emptyItem = () => ({ description: '', quantity: '1', unit_price: '' })
 
 function InvoiceForm({ onSubmit, loading }) {
@@ -17,13 +19,16 @@ function InvoiceForm({ onSubmit, loading }) {
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it))
   const addItem = () => setItems(prev => [...prev, emptyItem()])
   const removeItem = (idx) => setItems(prev => prev.filter((_, i) => i !== idx))
-  const subtotal = useMemo(() =>
+  // Preview local — solo para mostrar al usuario antes de confirmar
+  // Los montos definitivos los calcula el backend (IVA_RATE en routers/invoices.py)
+  const subtotalPreview = useMemo(() =>
     items.reduce((sum, it) => sum + (parseFloat(it.unit_price) || 0) * (parseInt(it.quantity) || 1), 0), [items])
-  const tax = subtotal * IVA_RATE
-  const total = subtotal + tax
+  const taxPreview = subtotalPreview * IVA_RATE_DISPLAY
+  const totalPreview = subtotalPreview + taxPreview
   const canSubmit = patientId && items.some(it => it.description && it.unit_price)
   const handleSubmit = () => {
-    const apiPayload = { patient_id: patientId, subtotal: subtotal.toFixed(2), tax: tax.toFixed(2), total: total.toFixed(2), notes: JSON.stringify(items) }
+    // Solo enviamos patient_id e items — el backend calcula subtotal, tax y total
+    const apiPayload = { patient_id: patientId, items }
     onSubmit(apiPayload, items)
   }
   const inputCls = 'w-full px-2 py-1 rounded border border-silver-300 bg-white text-gray-800 text-sm focus:outline-none focus:ring-1 focus:ring-gold-400 [color-scheme:light]'
@@ -72,9 +77,10 @@ function InvoiceForm({ onSubmit, loading }) {
       </div>
 
       <div className="bg-gold-50 border border-gold-200 rounded-lg px-4 py-3 space-y-1.5">
-        <div className="flex justify-between text-sm text-gray-600 dark:text-white/70"><span>Subtotal</span><span>₡{subtotal.toFixed(2)}</span></div>
-        <div className="flex justify-between text-sm text-gray-600 dark:text-white/70"><span>IVA (13%)</span><span>₡{tax.toFixed(2)}</span></div>
-        <div className="flex justify-between text-base font-bold text-gold-700 border-t border-gold-200 pt-1.5 mt-1"><span>Total</span><span>₡{total.toFixed(2)}</span></div>
+        <div className="flex justify-between text-sm text-gray-600 dark:text-white/70"><span>Subtotal</span><span>₡{subtotalPreview.toFixed(2)}</span></div>
+        <div className="flex justify-between text-sm text-gray-600 dark:text-white/70"><span>IVA (13%)</span><span>₡{taxPreview.toFixed(2)}</span></div>
+        <div className="flex justify-between text-base font-bold text-gold-700 border-t border-gold-200 pt-1.5 mt-1"><span>Total estimado</span><span>₡{totalPreview.toFixed(2)}</span></div>
+        <p className="text-[10px] text-gray-400 text-right">El backend recalcula los montos al confirmar</p>
       </div>
 
       <Button className="w-full justify-center" onClick={handleSubmit} disabled={loading || !canSubmit}>

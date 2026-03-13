@@ -88,12 +88,16 @@ async def _create_clerk_user(full_name: str, email: str, password: str) -> str:
 async def list_team(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
+    role: str | None = None,
 ):
-    result = await db.execute(
+    q = (
         select(User)
         .where(User.clinic_id == current_user.clinic_id, User.is_active == True)
-        .order_by(User.full_name)
     )
+    if role:
+        q = q.where(User.role == role)
+    q = q.order_by(User.full_name)
+    result = await db.execute(q)
     return result.scalars().all()
 
 

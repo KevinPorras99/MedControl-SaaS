@@ -305,7 +305,18 @@ export function useDoctors() {
   const api = useApi()
   return useQuery({
     queryKey: ['doctors'],
-    queryFn: () => api.get('/api/settings/users').then(r => r.data?.filter(u => u.role === 'doctor') ?? []),
+    // Filtrado por rol en el backend — no en el frontend
+    queryFn: () => api.get('/api/settings/users', { params: { role: 'doctor' } }).then(r => r.data),
+  })
+}
+
+// ── App Config (constantes de negocio del backend) ─
+export function useAppConfig() {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['app-config'],
+    queryFn: () => api.get('/api/config').then(r => r.data),
+    staleTime: Infinity, // las constantes no cambian en runtime
   })
 }
 

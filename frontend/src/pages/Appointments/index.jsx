@@ -49,26 +49,20 @@ export default function AppointmentsPage() {
   const [search, setSearch] = useState('')
 
   const { data: appointments, isLoading } = useAppointments({ status: statusFilter || undefined })
-  const { data: patients } = usePatients()
   const createAppointment = useCreateAppointment()
   const updateAppointment = useUpdateAppointment()
 
-  const patientMap = useMemo(() => {
-    const map = {}
-    patients?.forEach(p => { map[p.id] = p.full_name })
-    return map
-  }, [patients])
-
+  // patient_name y doctor_name vienen del backend (JOIN) — sin necesidad de fetchear pacientes aquí
   const filtered = useMemo(() => {
     if (!appointments) return []
     if (!search.trim()) return appointments
     const q = search.toLowerCase()
     return appointments.filter(a =>
-      patientMap[a.patient_id]?.toLowerCase().includes(q) ||
+      a.patient_name?.toLowerCase().includes(q) ||
       a.reason?.toLowerCase().includes(q) ||
       a.status?.toLowerCase().includes(q)
     )
-  }, [appointments, search, patientMap])
+  }, [appointments, search])
 
   return (
     <div>
@@ -125,7 +119,7 @@ export default function AppointmentsPage() {
                     {format(new Date(a.appointment_date), "dd MMM · HH:mm", { locale: es })}
                   </td>
                   <td className="px-4 py-3 text-gray-700 dark:text-white font-medium">
-                    {patientMap[a.patient_id] || <span className="text-gray-400 dark:text-white/50 italic">—</span>}
+                    {a.patient_name || <span className="text-gray-400 dark:text-white/50 italic">—</span>}
                   </td>
                   <td className="px-4 py-3 text-gray-600 dark:text-white/70">{a.reason || '—'}</td>
                   <td className="px-4 py-3 text-gray-600 dark:text-white/70">{a.duration_minutes} min</td>
