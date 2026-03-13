@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:stitch.withgoogle.com)",
+      "Read(//c/Users/DELL/**)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "WebFetch(domain:21st.dev)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:unpkg.com)",
+      "Bash(npm install @21st-sdk/react @ai-sdk/react ai)",
+      "Bash(npm install -g uipro-cli)",
+      "Bash(uipro init --ai claude)",
+      "Bash(node -e \"const p=require\\(''./node_modules/@ai-sdk/react/package.json''\\); console.log\\(''ai-sdk/react:'', p.version\\)\")",
+      "Bash(node -e \"const p=require\\(''./node_modules/@21st-sdk/react/package.json''\\); console.log\\(''21st-sdk/react:'', p.version\\)\")",
+      "Bash(node -e \"const p=require\\(''./node_modules/ai/package.json''\\); console.log\\(''ai:'', p.version\\)\")",
+      "Bash(node -e \"const p=require\\(''./node_modules/@21st-sdk/react/package.json''\\); console.log\\(''peerDeps:'', JSON.stringify\\(p.peerDependencies, null, 2\\)\\); console.log\\(''deps:'', JSON.stringify\\(p.dependencies, null, 2\\)\\)\")",
+      "Bash(node -e \"const {useChat} = require\\(''@ai-sdk/react''\\); console.log\\(''useChat exists:'', typeof useChat\\)\")",
+      "Bash(node -e \":*)",
+      "Bash(grep -r \"useChat\" node_modules/@ai-sdk/react/dist/*.d.ts)",
+      "Bash(python -m uvicorn app.main:app --reload --port 8000)",
+      "Bash(taskkill /F /PID 22720)",
+      "Bash(taskkill /F /IM python.exe /T)",
+      "Bash(curl -s -X POST \"https://relay.an.dev/v1/tokens\" -H \"Authorization: Bearer an_sk_fe9e209d3f5b8112aeedac0f8654fc4060301a85e578e01ebf7e5352ff5508be\" -H \"Content-Type: application/json\" -d '{\"\"agents\"\": [\"\"MedTron\"\"], \"\"userId\"\": \"\"test\"\", \"\"expiresIn\"\": \"\"1h\"\"}')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/api/assistant/token -X POST -H \"Content-Type: application/json\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\DELL"
+    ]
+  }
+}

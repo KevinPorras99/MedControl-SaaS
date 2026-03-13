@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.database import get_db
-from app.dependencies import CurrentUser, RequireAnyRole, RequireReception, RequireAdmin
+from app.dependencies import CurrentUser, RequireAnyRole, RequireReception, RequireAdmin, RequireClinical
 from app.models.appointment import Appointment
 from app.schemas import AppointmentCreate, AppointmentOut, AppointmentUpdate
 from app.services.whatsapp import schedule_reminder
@@ -45,7 +45,7 @@ async def list_appointments(
     return result.scalars().all()
 
 
-@router.post("", response_model=AppointmentOut, status_code=status.HTTP_201_CREATED, dependencies=[RequireReception])
+@router.post("", response_model=AppointmentOut, status_code=status.HTTP_201_CREATED, dependencies=[RequireAnyRole])
 async def create_appointment(
     body: AppointmentCreate,
     current_user: CurrentUser,

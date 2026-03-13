@@ -137,4 +137,5 @@ def require_roles(*roles: str):
 RequireAdmin       = Depends(require_roles("admin_clinic"))
 RequireDoctor      = Depends(require_roles("doctor"))
 RequireReception   = Depends(require_roles("admin_clinic", "receptionist"))
+RequireClinical    = Depends(require_roles("admin_clinic", "doctor"))        # admin + doctor (sin recepcionista)
 RequireAnyRole     = Depends(require_roles("admin_clinic", "doctor", "receptionist"))

@@ -53,6 +53,7 @@ async def _send_pending_reminders() -> None:
             logs: list[WhatsappLog] = result.scalars().all()
 
             if not logs:
+                await session.commit()  # cierra la transacción limpiamente sin ROLLBACK
                 return
 
             logger.info("[Scheduler] Procesando %d recordatorio(s)...", len(logs))

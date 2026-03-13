@@ -14,6 +14,7 @@ from app.routers import (
     invoices_router,
     settings_router,
     reports_router,
+    assistant_router,
 )
 from app.services.scheduler import start_scheduler, stop_scheduler
 
@@ -77,6 +78,7 @@ app.include_router(medical_records_router)
 app.include_router(invoices_router)
 app.include_router(settings_router)
 app.include_router(reports_router)
+app.include_router(assistant_router)
 # app.include_router(billing_router)  # deshabilitado hasta configurar Stripe
 
 

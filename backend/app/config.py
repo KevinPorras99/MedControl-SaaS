@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     stripe_price_clinica: str = ""
     # Frontend URL (para redirect URLs de Stripe y CORS en producción)
     app_frontend_url: str = "http://localhost:5173"
+    # Groq AI Assistant (free tier)
+    groq_api_key: str = ""
 
     @property
     def allowed_origins(self) -> list[str]:

@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.dependencies import CurrentUser, RequireDoctor
+from app.dependencies import CurrentUser, RequireDoctor, RequireClinical
 from app.models.medical_record import MedicalRecord, MedicalRecordAttachment
 from app.schemas import MedicalRecordCreate, MedicalRecordOut, AttachmentOut
 from app import storage
@@ -72,7 +72,7 @@ async def get_patient_records(
 
 
 # ── POST nuevo expediente ─────────────────────────────────────────────────────
-@router.post("", response_model=MedicalRecordOut, status_code=status.HTTP_201_CREATED, dependencies=[RequireDoctor])
+@router.post("", response_model=MedicalRecordOut, status_code=status.HTTP_201_CREATED, dependencies=[RequireClinical])
 async def create_record(
     body: MedicalRecordCreate,
     current_user: CurrentUser,
@@ -90,7 +90,7 @@ async def create_record(
 
 
 # ── DELETE archivo (definido ANTES de /{record_id}/... para evitar conflictos) ─
-@router.delete("/attachments/{attachment_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[RequireDoctor])
+@router.delete("/attachments/{attachment_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[RequireClinical])
 async def delete_attachment(
     attachment_id: uuid.UUID,
     current_user: CurrentUser,
@@ -115,7 +115,7 @@ async def delete_attachment(
     "/{record_id}/attachments",
     response_model=AttachmentOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[RequireDoctor],
+    dependencies=[RequireClinical],
 )
 async def upload_attachment(
     record_id: uuid.UUID,

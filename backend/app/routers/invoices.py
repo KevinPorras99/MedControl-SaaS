@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.database import get_db
-from app.dependencies import CurrentUser, RequireAnyRole, RequireReception, RequireAdmin
+from app.dependencies import CurrentUser, RequireAnyRole, RequireReception, RequireAdmin, RequireClinical
 from app.models.invoice import Invoice
 from app.models.payment import Payment
 from app.schemas import InvoiceCreate, InvoiceOut, InvoiceUpdate, PaymentCreate, PaymentOut
@@ -31,7 +31,7 @@ async def list_invoices(
     return result.scalars().all()
 
 
-@router.post("", response_model=InvoiceOut, status_code=status.HTTP_201_CREATED, dependencies=[RequireReception])
+@router.post("", response_model=InvoiceOut, status_code=status.HTTP_201_CREATED, dependencies=[RequireAnyRole])
 async def create_invoice(
     body: InvoiceCreate,
     current_user: CurrentUser,
@@ -51,7 +51,7 @@ async def create_invoice(
     return invoice
 
 
-@router.patch("/{invoice_id}", response_model=InvoiceOut, dependencies=[RequireAdmin])
+@router.patch("/{invoice_id}", response_model=InvoiceOut, dependencies=[RequireClinical])
 async def update_invoice(
     invoice_id: uuid.UUID,
     body: InvoiceUpdate,
@@ -71,7 +71,7 @@ async def update_invoice(
     return invoice
 
 
-@router.post("/{invoice_id}/pay", response_model=PaymentOut, status_code=status.HTTP_201_CREATED, dependencies=[RequireReception])
+@router.post("/{invoice_id}/pay", response_model=PaymentOut, status_code=status.HTTP_201_CREATED, dependencies=[RequireAnyRole])
 async def register_payment(
     invoice_id: uuid.UUID,
     body: PaymentCreate,

@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "@21st-sdk/agent": "^0.0.6",
+    "@21st-sdk/nextjs": "^0.0.10",
+    "@21st-sdk/node": "^0.0.4",
+    "@21st-sdk/react": "^0.1.4",
+    "@ai-sdk/react": "^3.0.118",
+    "ai": "^6.0.116",
+    "zod": "^4.3.6"
+  }
+}

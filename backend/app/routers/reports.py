@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 
 from app.database import get_db
 from app.dependencies import CurrentUser, RequireAnyRole
@@ -34,8 +34,8 @@ async def dashboard_stats(
             func.coalesce(func.sum(Payment.amount), 0).label("total"),
         )
         .where(Payment.clinic_id == clinic_id)
-        .group_by(func.to_char(Payment.paid_at, "YYYY-MM"))
-        .order_by(func.to_char(Payment.paid_at, "YYYY-MM").desc())
+        .group_by(text("1"))
+        .order_by(text("1 DESC"))
         .limit(6)
     )
     monthly_revenue = list(reversed([
@@ -76,8 +76,8 @@ async def dashboard_stats(
             func.count(Patient.id).label("count"),
         )
         .where(Patient.clinic_id == clinic_id)
-        .group_by(func.to_char(Patient.created_at, "YYYY-MM"))
-        .order_by(func.to_char(Patient.created_at, "YYYY-MM").desc())
+        .group_by(text("1"))
+        .order_by(text("1 DESC"))
         .limit(6)
     )
     new_patients = list(reversed([
@@ -154,15 +154,15 @@ async def financial_summary(
         .group_by(Invoice.status)
     )
 
-    # Ingresos mensuales (todos los meses con pagos)
+    # Ingresos mensuales (filtrados por el mismo rango de fechas)
     monthly_res = await db.execute(
         select(
             func.to_char(Payment.paid_at, "YYYY-MM").label("month"),
             func.coalesce(func.sum(Payment.amount), 0).label("total"),
         )
-        .where(Payment.clinic_id == clinic_id)
-        .group_by(func.to_char(Payment.paid_at, "YYYY-MM"))
-        .order_by(func.to_char(Payment.paid_at, "YYYY-MM"))
+        .where(*pay_filters)
+        .group_by(text("1"))
+        .order_by(text("1 ASC"))
         .limit(13)
     )
 

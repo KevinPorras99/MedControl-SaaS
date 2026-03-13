@@ -64,12 +64,10 @@ function RevenueChart({ data }) {
 }
 
 export default function ReportsPage() {
-  const today = new Date()
-  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0]
-  const [dateFrom, setDateFrom] = useState(firstOfMonth)
-  const [dateTo, setDateTo] = useState(today.toISOString().split('T')[0])
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
 
-  const { data, isLoading, refetch } = useFinancialReport({ dateFrom, dateTo })
+  const { data, isLoading, error, refetch } = useFinancialReport({ dateFrom, dateTo })
   const downloadInvoices = useDownloadInvoicesCSV()
   const downloadPayments = useDownloadPaymentsCSV()
 
@@ -115,6 +113,12 @@ export default function ReportsPage() {
           </div>
         </div>
       </Card>
+
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 rounded-lg text-sm text-red-700 dark:text-red-400">
+          Error al cargar los reportes: {error.message}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center py-20"><Spinner /></div>

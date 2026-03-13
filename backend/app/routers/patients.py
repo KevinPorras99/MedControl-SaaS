@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.database import get_db
-from app.dependencies import CurrentUser, RequireAnyRole, RequireReception, RequireAdmin
+from app.dependencies import CurrentUser, RequireAnyRole, RequireReception, RequireAdmin, RequireClinical
 from app.models.patient import Patient
 from app.schemas import PatientCreate, PatientOut, PatientUpdate
 
@@ -59,7 +59,7 @@ async def get_patient(
     return patient
 
 
-@router.patch("/{patient_id}", response_model=PatientOut, dependencies=[RequireAdmin])
+@router.patch("/{patient_id}", response_model=PatientOut, dependencies=[RequireClinical])
 async def update_patient(
     patient_id: uuid.UUID,
     body: PatientUpdate,

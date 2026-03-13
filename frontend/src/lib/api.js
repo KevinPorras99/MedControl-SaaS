@@ -2,14 +2,22 @@ import axios from 'axios'
 import { useAuth } from '@clerk/clerk-react'
 import { useRef, useEffect } from 'react'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 function errorInterceptor(err) {
+  console.error('[API Error]', {
+    message: err.message,
+    status: err.response?.status,
+    data: err.response?.data,
+    url: err.config?.url,
+  })
   const detail = err.response?.data?.detail
   let msg = 'Error inesperado'
   if (typeof detail === 'string') msg = detail
   else if (Array.isArray(detail)) msg = detail.map(e => e.msg || e.message).join(' · ')
   else if (detail) msg = JSON.stringify(detail)
+  else if (err.response?.status) msg = `Error ${err.response.status}`
+  else msg = err.message || 'Error inesperado'
   return Promise.reject(new Error(msg))
 }
 

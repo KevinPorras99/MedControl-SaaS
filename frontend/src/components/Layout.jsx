@@ -1,6 +1,7 @@
 import { Outlet, Navigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import Sidebar from './Sidebar'
+import MedicalAssistant from './MedicalAssistant'
 import { useApi } from '../lib/api'
 
 export default function Layout() {
@@ -30,6 +31,7 @@ export default function Layout() {
           <Outlet />
         </div>
       </main>
+      <MedicalAssistant />
     </div>
   )
 }
