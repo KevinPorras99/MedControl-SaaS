@@ -225,6 +225,42 @@ class MedicalRecordOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Follow-up Reminders ───────────────────────────────────────────────────────
+class ReminderCreate(BaseModel):
+    patient_id: uuid.UUID
+    record_id: uuid.UUID | None = None
+    due_date: date
+    notes: str | None = None
+
+    @field_validator("notes")
+    @classmethod
+    def validate_notes(cls, v: str | None) -> str | None:
+        if v and len(v) > 1000:
+            raise ValueError("Las notas no pueden superar 1000 caracteres")
+        return v
+
+
+class ReminderUpdate(BaseModel):
+    status: Literal["pending", "sent", "cancelled"] | None = None
+    notes: str | None = None
+
+
+class ReminderOut(BaseModel):
+    id: uuid.UUID
+    clinic_id: uuid.UUID
+    patient_id: uuid.UUID
+    record_id: uuid.UUID | None
+    doctor_id: uuid.UUID
+    due_date: date
+    notes: str | None
+    status: str
+    created_at: datetime
+    patient_name: str | None = None
+    doctor_name: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
 # ── Invoice ───────────────────────────────────────
 class InvoiceItemIn(BaseModel):
     """Un ítem de factura tal como llega del frontend."""
@@ -327,5 +363,78 @@ class PaymentOut(BaseModel):
     reference: str | None
     notes: str | None
     paid_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── Consent Templates ──────────────────────────────────────────────────────────
+class ConsentTemplateCreate(BaseModel):
+    title: str
+    content: str
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) < 2 or len(v) > 255:
+            raise ValueError("El título debe tener entre 2 y 255 caracteres")
+        return v
+
+    @field_validator("content")
+    @classmethod
+    def validate_content(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("El contenido no puede estar vacío")
+        if len(v) > 20000:
+            raise ValueError("El contenido no puede superar 20,000 caracteres")
+        return v
+
+
+class ConsentTemplateUpdate(BaseModel):
+    title: str | None = None
+    content: str | None = None
+    is_active: bool | None = None
+
+
+class ConsentTemplateOut(BaseModel):
+    id: uuid.UUID
+    clinic_id: uuid.UUID
+    title: str
+    content: str
+    is_active: bool
+    created_by: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── Patient Consents ───────────────────────────────────────────────────────────
+class PatientConsentCreate(BaseModel):
+    patient_id: uuid.UUID
+    template_id: uuid.UUID
+    medical_record_id: uuid.UUID | None = None
+    signature_data_url: str
+
+    @field_validator("signature_data_url")
+    @classmethod
+    def validate_signature(cls, v: str) -> str:
+        if not v.startswith("data:image/png;base64,"):
+            raise ValueError("La firma debe ser una imagen PNG en base64")
+        if len(v) > 400_000:
+            raise ValueError("La imagen de firma es demasiado grande")
+        return v
+
+
+class PatientConsentOut(BaseModel):
+    id: uuid.UUID
+    clinic_id: uuid.UUID
+    patient_id: uuid.UUID
+    template_id: uuid.UUID
+    medical_record_id: uuid.UUID | None
+    signed_by: uuid.UUID
+    pdf_url: str
+    signed_at: datetime
+    template_title: str | None = None
 
     model_config = {"from_attributes": True}

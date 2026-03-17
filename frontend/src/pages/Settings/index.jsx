@@ -3,12 +3,14 @@ import { useUser } from '@clerk/clerk-react'
 import {
   Users, Building2, CreditCard, Shield,
   UserPlus, Trash2, Edit2, Copy, Check,
-  UserCheck, UserX, Clock, Package
+  UserCheck, UserX, Clock, Package,
+  FileCheck, Plus
 } from 'lucide-react'
 import { PageHeader, Card, Spinner, Button, Modal, Input, Select, EmptyState, Badge } from '../../components/ui'
 import {
   useMe, useTeamMembers, useAddTeamMember, useRemoveTeamMember,
-  useUpdateTeamMember, useClinicSettings, useUpdateClinic, useAuditLogs
+  useUpdateTeamMember, useClinicSettings, useUpdateClinic, useAuditLogs,
+  useConsentTemplates, useCreateConsentTemplate, useUpdateConsentTemplate, useDeleteConsentTemplate
 } from '../../hooks'
 import { format } from 'date-fns'
 
@@ -26,10 +28,11 @@ const PLAN_INFO = {
 }
 
 const TABS = [
-  { id: 'team',    label: 'Equipo',      icon: Users },
-  { id: 'clinic',  label: 'Clínica',     icon: Building2 },
-  { id: 'billing', label: 'Facturación', icon: CreditCard },
-  { id: 'audit',   label: 'Auditoría',   icon: Shield },
+  { id: 'team',      label: 'Equipo',           icon: Users },
+  { id: 'clinic',    label: 'Clínica',           icon: Building2 },
+  { id: 'billing',   label: 'Facturación',       icon: CreditCard },
+  { id: 'audit',     label: 'Auditoría',         icon: Shield },
+  { id: 'consents',  label: 'Consentimientos',   icon: FileCheck },
 ]
 
 // ── Team Tab ──────────────────────────────────────
@@ -364,6 +367,88 @@ function AuditTab() {
   )
 }
 
+// ── Consents Tab ──────────────────────────────────
+function ConsentTemplateForm({ initial, onSubmit, loading }) {
+  const [form, setForm] = useState({ title: initial?.title || '', content: initial?.content || '' })
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const inputCls = 'w-full px-3 py-2 rounded-lg border border-gray-300/50 dark:border-white/20 bg-white/[0.08] dark:bg-white/[0.05] text-gray-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500/60'
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-white/80 mb-1">Título *</label>
+        <input className={inputCls} value={form.title} onChange={e => set('title', e.target.value)} placeholder="Ej: Consentimiento para intervención quirúrgica" />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-white/80 mb-1">Contenido *</label>
+        <textarea className={`${inputCls} resize-y`} rows={10} value={form.content} onChange={e => set('content', e.target.value)} placeholder="Redactá el texto completo del consentimiento informado..." />
+      </div>
+      <Button className="w-full justify-center" onClick={() => { if (form.title && form.content) onSubmit(form) }} disabled={loading || !form.title || !form.content}>
+        {loading ? 'Guardando...' : 'Guardar plantilla'}
+      </Button>
+    </div>
+  )
+}
+
+function ConsentsSettingsTab({ isAdmin }) {
+  const { data: templates, isLoading } = useConsentTemplates({ includeInactive: true })
+  const createTemplate = useCreateConsentTemplate()
+  const updateTemplate = useUpdateConsentTemplate()
+  const deleteTemplate = useDeleteConsentTemplate()
+  const [showAdd, setShowAdd] = useState(false)
+  const [editing, setEditing] = useState(null)
+
+  return (
+    <div className="space-y-5">
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-base font-semibold text-gray-800 dark:text-white">Plantillas de consentimiento</h2>
+            <p className="text-sm text-gray-500 dark:text-white/50 mt-0.5">{templates?.filter(t => t.is_active).length || 0} activa(s)</p>
+          </div>
+          {isAdmin && <Button size="sm" onClick={() => setShowAdd(true)}><Plus size={14} /> Nueva plantilla</Button>}
+        </div>
+
+        {isLoading ? <Spinner /> : !templates?.length ? (
+          <EmptyState icon={FileCheck} title="Sin plantillas" description="Creá la primera plantilla de consentimiento informado" />
+        ) : (
+          <div className="divide-y divide-gray-200/30 dark:divide-white/[0.06]">
+            {templates.map(t => (
+              <div key={t.id} className="flex items-center justify-between py-3.5 gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <FileCheck size={16} className={t.is_active ? 'text-green-500' : 'text-gray-400'} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{t.title}</p>
+                    <p className="text-xs text-gray-400 dark:text-white/40 mt-0.5 line-clamp-1">{t.content.slice(0, 80)}{t.content.length > 80 ? '…' : ''}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {!t.is_active && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">Inactiva</span>}
+                  {isAdmin && (
+                    <>
+                      <button onClick={() => setEditing(t)} className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors"><Edit2 size={15} /></button>
+                      {t.is_active && <button onClick={() => deleteTemplate.mutate(t.id)} disabled={deleteTemplate.isPending} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40"><Trash2 size={15} /></button>}
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Nueva plantilla de consentimiento">
+        <ConsentTemplateForm onSubmit={async data => { await createTemplate.mutateAsync(data); setShowAdd(false) }} loading={createTemplate.isPending} />
+      </Modal>
+
+      {editing && (
+        <Modal open={!!editing} onClose={() => setEditing(null)} title="Editar plantilla">
+          <ConsentTemplateForm initial={editing} onSubmit={async data => { await updateTemplate.mutateAsync({ id: editing.id, ...data }); setEditing(null) }} loading={updateTemplate.isPending} />
+        </Modal>
+      )}
+    </div>
+  )
+}
+
 // ── Main Settings Page ────────────────────────────
 export default function SettingsPage() {
   const { data: me } = useMe()
@@ -398,10 +483,11 @@ export default function SettingsPage() {
 
       {/* Tab content */}
       <div className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
-        {tab === 'team'    && <TeamTab isAdmin={isAdmin} />}
-        {tab === 'clinic'  && <ClinicTab />}
-        {tab === 'billing' && <BillingTab />}
-        {tab === 'audit'   && <AuditTab />}
+        {tab === 'team'     && <TeamTab isAdmin={isAdmin} />}
+        {tab === 'clinic'   && <ClinicTab />}
+        {tab === 'billing'  && <BillingTab />}
+        {tab === 'audit'    && <AuditTab />}
+        {tab === 'consents' && <ConsentsSettingsTab isAdmin={isAdmin} />}
       </div>
     </div>
   )

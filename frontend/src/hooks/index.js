@@ -15,6 +15,8 @@ import { reportsApi }      from '../api/reports'
 import { settingsApi }     from '../api/settings'
 import { authApi }         from '../api/auth'
 import { billingApi }      from '../api/billing'
+import { remindersApi }   from '../api/reminders'
+import { consentsApi }    from '../api/consents'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Auth
@@ -67,6 +69,28 @@ export function useUpdatePatient() {
   return useMutation({
     mutationFn: (payload) => patientsApi.update(api, payload),
     onSuccess: () => { qc.invalidateQueries(['patients']); toast.success('Paciente actualizado') },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+export function useDeletePatient() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => patientsApi.delete(api, id),
+    onSuccess: () => { qc.invalidateQueries(['patients']); toast.success('Paciente eliminado') },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+export function useGeneratePortalToken() {
+  const api = useApi()
+  return useMutation({
+    mutationFn: (patientId) => patientsApi.generatePortalToken(api, patientId),
+    onSuccess: ({ portal_url }) => {
+      navigator.clipboard.writeText(portal_url)
+      toast.success('Link del portal copiado al portapapeles')
+    },
     onError: (e) => toast.error(e.message),
   })
 }
@@ -186,6 +210,65 @@ export function useDeleteAttachment() {
       qc.invalidateQueries(['records', patientId])
       toast.success('Archivo eliminado')
     },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+export function useExportRecordPdf() {
+  const api = useApi()
+  return useMutation({
+    mutationFn: (patientId) => recordsApi.exportPdf(api, patientId),
+    onSuccess: () => toast.success('PDF generado'),
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+export function usePrintPrescription() {
+  const api = useApi()
+  return useMutation({
+    mutationFn: (recordId) => recordsApi.printPrescription(api, recordId),
+    onError: (e) => toast.error(e.message || 'Error al generar la receta'),
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Follow-up Reminders
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function useReminders(filters = {}) {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['reminders', filters],
+    queryFn: () => remindersApi.list(api, filters),
+  })
+}
+
+export function useCreateReminder() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => remindersApi.create(api, data),
+    onSuccess: () => { qc.invalidateQueries(['reminders']); toast.success('Seguimiento programado') },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+export function useUpdateReminder() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload) => remindersApi.update(api, payload),
+    onSuccess: () => { qc.invalidateQueries(['reminders']); toast.success('Seguimiento actualizado') },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+export function useDeleteReminder() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => remindersApi.remove(api, id),
+    onSuccess: () => { qc.invalidateQueries(['reminders']); toast.success('Seguimiento eliminado') },
     onError: (e) => toast.error(e.message),
   })
 }
@@ -411,6 +494,74 @@ export function useCustomerPortal() {
   return useMutation({
     mutationFn: () => billingApi.portal(api),
     onSuccess: ({ portal_url }) => { window.location.href = portal_url },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Consent Templates
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function useConsentTemplates({ includeInactive = false } = {}) {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['consent-templates', includeInactive],
+    queryFn: () => consentsApi.listTemplates(api, { includeInactive }),
+  })
+}
+
+export function useCreateConsentTemplate() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => consentsApi.createTemplate(api, data),
+    onSuccess: () => { qc.invalidateQueries(['consent-templates']); toast.success('Plantilla creada') },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+export function useUpdateConsentTemplate() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload) => consentsApi.updateTemplate(api, payload),
+    onSuccess: () => { qc.invalidateQueries(['consent-templates']); toast.success('Plantilla actualizada') },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+export function useDeleteConsentTemplate() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => consentsApi.deleteTemplate(api, id),
+    onSuccess: () => { qc.invalidateQueries(['consent-templates']); toast.success('Plantilla desactivada') },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Patient Consents
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function usePatientConsents(patientId) {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['consents', patientId],
+    queryFn: () => consentsApi.listPatientConsents(api, patientId),
+    enabled: !!patientId,
+  })
+}
+
+export function useSignConsent() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => consentsApi.signConsent(api, data),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries(['consents', vars.patient_id])
+      toast.success('Consentimiento firmado y guardado')
+    },
     onError: (e) => toast.error(e.message),
   })
 }

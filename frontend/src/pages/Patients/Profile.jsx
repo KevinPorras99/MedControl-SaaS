@@ -1,14 +1,16 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import {
   ArrowLeft, User, Phone, Mail, Calendar, MapPin, FileText,
-  Plus, ClipboardList, Receipt, Clock, Edit2, Activity
+  Plus, ClipboardList, Receipt, Clock, Edit2, Activity, Link2,
+  ShieldCheck
 } from 'lucide-react'
 import { PageHeader, Card, Spinner, Badge, Button, Modal, Input, Select, EmptyState } from '../../components/ui'
 import {
   usePatient, useUpdatePatient, useMedicalRecords,
-  useAppointments, useInvoices
+  useAppointments, useInvoices, useGeneratePortalToken,
+  useConsentTemplates, usePatientConsents, useSignConsent
 } from '../../hooks'
 
 const TABS = [
@@ -16,12 +18,14 @@ const TABS = [
   { id: 'records',  label: 'Historial',       icon: ClipboardList },
   { id: 'appts',    label: 'Citas',           icon: Calendar },
   { id: 'invoices', label: 'Facturas',        icon: Receipt },
+  { id: 'consents', label: 'Consentimientos', icon: ShieldCheck },
 ]
 
 function PatientSidebar({ patient, onEdit }) {
   const age = patient.birth_date
     ? Math.floor((Date.now() - new Date(patient.birth_date)) / (365.25 * 24 * 3600 * 1000))
     : null
+  const generatePortalToken = useGeneratePortalToken()
 
   return (
     <Card className="p-6">
@@ -75,6 +79,15 @@ function PatientSidebar({ patient, onEdit }) {
 
       <Button variant="outline" size="sm" className="w-full justify-center mt-4" onClick={onEdit}>
         <Edit2 size={13} /> Editar paciente
+      </Button>
+      <Button
+        variant="outline" size="sm"
+        className="w-full justify-center mt-2"
+        onClick={() => generatePortalToken.mutate(patient.id)}
+        disabled={generatePortalToken.isPending}
+      >
+        <Link2 size={13} />
+        {generatePortalToken.isPending ? 'Generando...' : 'Generar link de portal'}
       </Button>
     </Card>
   )
@@ -316,6 +329,154 @@ function EditPatientModal({ patient, open, onClose }) {
   )
 }
 
+function SignConsentModal({ patientId, patientName, onClose }) {
+  const { data: templates } = useConsentTemplates()
+  const signConsent = useSignConsent()
+  const [step, setStep] = useState(1)
+  const [selectedTemplate, setSelectedTemplate] = useState(null)
+  const canvasRef = useRef(null)
+  const [drawing, setDrawing] = useState(false)
+  const [hasSig, setHasSig] = useState(false)
+
+  const getPos = (e, canvas) => {
+    const rect = canvas.getBoundingClientRect()
+    const src = e.touches ? e.touches[0] : e
+    return {
+      x: (src.clientX - rect.left) * (canvas.width / rect.width),
+      y: (src.clientY - rect.top) * (canvas.height / rect.height),
+    }
+  }
+  const startDraw = (e) => {
+    e.preventDefault()
+    setDrawing(true)
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    const { x, y } = getPos(e, canvas)
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+  }
+  const draw = (e) => {
+    if (!drawing) return
+    e.preventDefault()
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    const { x, y } = getPos(e, canvas)
+    ctx.lineTo(x, y)
+    ctx.strokeStyle = '#1f2937'
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.stroke()
+    setHasSig(true)
+  }
+  const stopDraw = () => setDrawing(false)
+  const clearCanvas = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height)
+    setHasSig(false)
+  }
+  const handleSubmit = async () => {
+    const canvas = canvasRef.current
+    if (!canvas || !selectedTemplate) return
+    const dataUrl = canvas.toDataURL('image/png')
+    await signConsent.mutateAsync({ patient_id: patientId, template_id: selectedTemplate.id, signature_data_url: dataUrl })
+    onClose()
+  }
+
+  const activeTemplates = templates?.filter(t => t.is_active) || []
+
+  return (
+    <Modal open={true} onClose={onClose} title={step === 1 ? 'Seleccionar plantilla' : step === 2 ? 'Leer consentimiento' : 'Firma del paciente'}>
+      {step === 1 && (
+        <div className="space-y-3">
+          {!activeTemplates.length ? (
+            <p className="text-sm text-gray-500 text-center py-8">No hay plantillas activas. Creá una en Configuración → Consentimientos.</p>
+          ) : activeTemplates.map(t => (
+            <button key={t.id} onClick={() => { setSelectedTemplate(t); setStep(2) }}
+              className="w-full text-left p-3 rounded-lg border border-gray-300/50 dark:border-white/20 hover:border-yellow-400 hover:bg-yellow-50/20 dark:hover:bg-yellow-500/10 transition-colors">
+              <p className="text-sm font-medium text-gray-800 dark:text-white">{t.title}</p>
+              <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{t.content.slice(0, 100)}…</p>
+            </button>
+          ))}
+        </div>
+      )}
+      {step === 2 && selectedTemplate && (
+        <div className="space-y-4">
+          <div className="max-h-64 overflow-y-auto p-4 rounded-lg bg-gray-50/50 dark:bg-white/[0.04] border border-gray-200 dark:border-white/10">
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-white mb-3">{selectedTemplate.title}</h3>
+            <p className="text-sm text-gray-700 dark:text-white/70 whitespace-pre-wrap leading-relaxed">{selectedTemplate.content}</p>
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => setStep(1)}>Volver</Button>
+            <Button className="flex-1 justify-center" onClick={() => setStep(3)}>He leído el contenido →</Button>
+          </div>
+        </div>
+      )}
+      {step === 3 && (
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-white/60">
+            El paciente <strong className="text-gray-800 dark:text-white">{patientName}</strong> debe firmar en el recuadro de abajo.
+          </p>
+          <div className="relative border-2 border-dashed border-gray-300/60 dark:border-white/20 rounded-xl overflow-hidden bg-white dark:bg-white/5">
+            <canvas ref={canvasRef} width={480} height={160} className="w-full touch-none"
+              onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw}
+              onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw} />
+            {!hasSig && (
+              <p className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 dark:text-white/30 pointer-events-none">Firmar aquí</p>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline" size="sm" onClick={clearCanvas}>Limpiar</Button>
+            <Button variant="outline" onClick={() => setStep(2)}>Volver</Button>
+            <Button className="flex-1 justify-center" onClick={handleSubmit} disabled={!hasSig || signConsent.isPending}>
+              {signConsent.isPending ? 'Guardando...' : 'Confirmar y guardar'}
+            </Button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  )
+}
+
+function ConsentsTab({ patientId, patientName }) {
+  const { data: consents, isLoading } = usePatientConsents(patientId)
+  const [showSign, setShowSign] = useState(false)
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-gray-600 dark:text-white/60">{consents?.length || 0} consentimiento(s) firmado(s)</p>
+        <Button size="sm" onClick={() => setShowSign(true)}><Plus size={14} /> Nuevo consentimiento</Button>
+      </div>
+      {isLoading ? <Spinner /> : !consents?.length ? (
+        <Card className="p-8">
+          <EmptyState icon={ShieldCheck} title="Sin consentimientos" description="Este paciente no tiene consentimientos firmados aún" action={<Button onClick={() => setShowSign(true)}><Plus size={14} /> Nuevo consentimiento</Button>} />
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {consents.map((c, i) => (
+            <Card key={c.id} className="p-4 animate-fade-in" style={{ animationDelay: `${i * 0.04}s` }}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-800 dark:text-white truncate">{c.template_title || 'Consentimiento'}</p>
+                  <p className="text-xs text-gray-500 dark:text-white/50 mt-0.5">{format(new Date(c.signed_at), 'dd/MM/yyyy · HH:mm')}</p>
+                </div>
+                <a href={c.pdf_url} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                  <Button size="sm" variant="outline"><FileText size={13} /> Ver PDF</Button>
+                </a>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+      {showSign && <SignConsentModal patientId={patientId} patientName={patientName} onClose={() => setShowSign(false)} />}
+    </div>
+  )
+}
+
 export default function PatientProfilePage() {
   const { patientId } = useParams()
   const navigate = useNavigate()
@@ -389,6 +550,7 @@ export default function PatientProfilePage() {
           {tab === 'records'  && <RecordsTab patientId={patientId} patientName={patient.full_name} />}
           {tab === 'appts'    && <ApptsTab patientId={patientId} />}
           {tab === 'invoices' && <InvoicesTab patientId={patientId} />}
+          {tab === 'consents' && <ConsentsTab patientId={patientId} patientName={patient?.full_name} />}
         </div>
       </div>
 
