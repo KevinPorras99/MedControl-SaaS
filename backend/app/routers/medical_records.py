@@ -1,3 +1,5 @@
+import asyncio
+import os
 import uuid
 from typing import Annotated
 
@@ -25,16 +27,38 @@ ALLOWED_MIME = {
 }
 MAX_SIZE = 10 * 1024 * 1024  # 10 MB
 
+# Magic byte signatures for each allowed MIME type.
+# Verifying the actual file bytes prevents clients from bypassing MIME checks
+# by simply lying about the Content-Type of a malicious file.
+_MAGIC: dict[str, list[bytes]] = {
+    "application/pdf":   [b"%PDF"],
+    "image/jpeg":        [b"\xFF\xD8\xFF"],
+    "image/png":         [b"\x89PNG\r\n\x1a\n"],
+    "image/webp":        [b"RIFF"],          # bytes 0-3; bytes 8-11 must be b"WEBP"
+    "image/gif":         [b"GIF87a", b"GIF89a"],
+    "application/msword": [b"\xD0\xCF\x11\xE0"],  # OLE2 compound document
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [b"PK\x03\x04"],
+}
+
+
+def _magic_ok(data: bytes, mime: str) -> bool:
+    """Return True if the file's leading bytes match the expected magic for its MIME type."""
+    header = data[:12]
+    for sig in _MAGIC.get(mime, []):
+        if header.startswith(sig):
+            if mime == "image/webp":
+                return len(data) >= 12 and data[8:12] == b"WEBP"
+            return True
+    return False
+
 
 # ── GET expedientes de un paciente ────────────────────────────────────────────
-@router.get("/{patient_id}")
+@router.get("/{patient_id}", dependencies=[RequireClinical])
 async def get_patient_records(
     patient_id: uuid.UUID,
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    if current_user.role == "receptionist":
-        raise HTTPException(status_code=403, detail="Sin acceso a expedientes clínicos")
 
     q = (
         select(MedicalRecord)
@@ -51,21 +75,26 @@ async def get_patient_records(
     result = await db.execute(q)
     records = result.scalars().all()
 
+    async def _sign_att(att) -> dict:
+        """Firma la URL de un adjunto. Se ejecuta en paralelo vía asyncio.gather."""
+        signed = await storage.get_signed_url(att.file_url)
+        return {
+            "id": str(att.id),
+            "file_name": att.file_name,
+            "file_url": signed,
+            "file_size_bytes": att.file_size_bytes,
+            "mime_type": att.mime_type,
+            "created_at": att.created_at.isoformat(),
+        }
+
     out = []
     for rec in records:
         rec_dict = MedicalRecordOut.model_validate(rec).model_dump()
-        atts = []
-        for att in rec.attachments:
-            signed = await storage.get_signed_url(att.file_url)
-            atts.append({
-                "id": str(att.id),
-                "file_name": att.file_name,
-                "file_url": signed,
-                "file_size_bytes": att.file_size_bytes,
-                "mime_type": att.mime_type,
-                "created_at": att.created_at.isoformat(),
-            })
-        rec_dict["attachments"] = atts
+        # Antes: sequential await por cada adjunto (N * 100ms)
+        # Ahora: gather paralelo — todos los adjuntos se firman a la vez
+        rec_dict["attachments"] = list(
+            await asyncio.gather(*[_sign_att(att) for att in rec.attachments])
+        ) if rec.attachments else []
         out.append(rec_dict)
 
     return out
@@ -140,13 +169,27 @@ async def upload_attachment(
     if len(data) > MAX_SIZE:
         raise HTTPException(status_code=400, detail="Archivo demasiado grande (máx. 10 MB)")
 
-    storage_path = storage.build_storage_path(current_user.clinic_id, record_id, file.filename)
+    # Verify actual file content matches the declared MIME type
+    if not _magic_ok(data, file.content_type):
+        raise HTTPException(status_code=400, detail="El contenido del archivo no coincide con su tipo declarado.")
+
+    # Use a UUID-based storage path to prevent path traversal attacks.
+    # Keep the original filename only for display purposes (file_name field).
+    original_name = file.filename or "archivo"
+    safe_ext = os.path.splitext(original_name)[1].lower()[:10]
+    # Whitelist extensions derived from allowed MIME types
+    allowed_ext = {".pdf", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".doc", ".docx"}
+    if safe_ext not in allowed_ext:
+        safe_ext = ""
+    safe_storage_name = f"{uuid.uuid4()}{safe_ext}"
+
+    storage_path = storage.build_storage_path(current_user.clinic_id, record_id, safe_storage_name)
     await storage.upload_file(storage_path, data, file.content_type)
 
     att = MedicalRecordAttachment(
         clinic_id=current_user.clinic_id,
         medical_record_id=record_id,
-        file_name=file.filename,
+        file_name=original_name[:255],  # display name capped to avoid DB overflow
         file_url=storage_path,  # guardamos el path, no la URL
         file_size_bytes=len(data),
         mime_type=file.content_type,

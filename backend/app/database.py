@@ -6,6 +6,8 @@ engine = create_async_engine(
     settings.database_url,
     pool_size=10,
     max_overflow=20,
+    pool_pre_ping=True,    # verifica la conexión antes de usarla — evita errores por conexiones caídas
+    pool_recycle=3600,     # recicla conexiones después de 1 hora — evita conexiones obsoletas
     echo=settings.app_env == "development",
 )
 

@@ -86,10 +86,10 @@ function FinancialTab() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => downloadInvoicesCSV({ dateFrom, dateTo })}>
+          <Button size="sm" variant="outline" onClick={() => downloadInvoicesCSV.mutate({ dateFrom, dateTo })}>
             <Download size={13} /> Facturas CSV
           </Button>
-          <Button size="sm" variant="outline" onClick={() => downloadPaymentsCSV({ dateFrom, dateTo })}>
+          <Button size="sm" variant="outline" onClick={() => downloadPaymentsCSV.mutate({ dateFrom, dateTo })}>
             <Download size={13} /> Pagos CSV
           </Button>
         </div>

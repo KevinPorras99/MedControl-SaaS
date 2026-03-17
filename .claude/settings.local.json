@@ -18,7 +18,13 @@
       "Bash(cmd /c \"pip install apscheduler==3.10.4 && python -c \"\"from apscheduler.schedulers.asyncio import AsyncIOScheduler; print\\(''OK''\\)\"\"\")",
       "Bash(python -c \"from app.services.scheduler import start_scheduler, stop_scheduler; from app.main import app; print\\(''Backend imports OK''\\)\")",
       "Bash(python3 \"c:/Users/DELL/OneDrive/Desktop/Proyectos 2026/MedControl-SaaS/.claude/skills/ui-ux-pro-max/scripts/search.py\" \"medical saas pricing payment checkout subscription plan\" --design-system -p \"MedControl\" -f markdown)",
-      "Bash(python \"c:/Users/DELL/OneDrive/Desktop/Proyectos 2026/MedControl-SaaS/.claude/skills/ui-ux-pro-max/scripts/search.py\" \"medical saas pricing payment checkout subscription plan\" --design-system -p \"MedControl\" -f markdown)"
+      "Bash(python \"c:/Users/DELL/OneDrive/Desktop/Proyectos 2026/MedControl-SaaS/.claude/skills/ui-ux-pro-max/scripts/search.py\" \"medical saas pricing payment checkout subscription plan\" --design-system -p \"MedControl\" -f markdown)",
+      "Bash(pip install:*)",
+      "Bash(python -c \"from app.services.patient_import import generate_csv_template, parse_file, build_preview; print\\(''OK''\\)\")",
+      "Bash(python -c \":*)",
+      "Bash(node -e \":*)",
+      "Bash(find 'c:/Users/DELL/OneDrive/Desktop/Proyectos 2026/MedControl-SaaS' -name .env* -o -name *.example)",
+      "Bash(grep -r \"print\\\\|console.log\" 'c:/Users/DELL/OneDrive/Desktop/Proyectos 2026/MedControl-SaaS/backend/app' --include=*.py)"
     ],
     "additionalDirectories": [
       "c:\\Users\\DELL\\.claude\\projects\\c--Users-DELL-OneDrive-Desktop-MedControl-SaaS",

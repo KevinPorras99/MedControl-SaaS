@@ -24,9 +24,45 @@ async def dashboard_stats(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Stats agregadas para el dashboard: ingresos mensuales, citas por semana y nuevos pacientes por mes."""
+    """Stats agregadas para el dashboard: KPI cards + gráficas de ingresos, citas y pacientes."""
     clinic_id = current_user.clinic_id
     today = datetime.utcnow().date()
+
+    # ── KPI: pacientes activos ─────────────────────────────────────────────
+    total_patients_res = await db.execute(
+        select(func.count(Patient.id)).where(
+            Patient.clinic_id == clinic_id,
+            Patient.is_active == True,
+        )
+    )
+    total_active_patients = total_patients_res.scalar() or 0
+
+    # ── KPI: citas de hoy ─────────────────────────────────────────────────
+    today_appts_res = await db.execute(
+        select(func.count(Appointment.id)).where(
+            Appointment.clinic_id == clinic_id,
+            func.date(Appointment.appointment_date) == today,
+        )
+    )
+    today_appointments = today_appts_res.scalar() or 0
+
+    # ── KPI: citas pendientes (programada/confirmada) ──────────────────────
+    pending_appts_res = await db.execute(
+        select(func.count(Appointment.id)).where(
+            Appointment.clinic_id == clinic_id,
+            Appointment.status.in_(["programada", "confirmada"]),
+        )
+    )
+    pending_appointments = pending_appts_res.scalar() or 0
+
+    # ── KPI: facturas pendientes ───────────────────────────────────────────
+    pending_invoices_res = await db.execute(
+        select(func.count(Invoice.id)).where(
+            Invoice.clinic_id == clinic_id,
+            Invoice.status == "pendiente",
+        )
+    )
+    pending_invoices = pending_invoices_res.scalar() or 0
 
     # ── Ingresos últimos 6 meses ─────────────────────────────────────────
     monthly_rev_res = await db.execute(
@@ -105,6 +141,12 @@ async def dashboard_stats(
     ]
 
     return {
+        # KPI cards
+        "total_active_patients": total_active_patients,
+        "today_appointments": today_appointments,
+        "pending_appointments": pending_appointments,
+        "pending_invoices": pending_invoices,
+        # Gráficas
         "monthly_revenue": monthly_revenue,
         "weekly_appointments": weekly_appointments,
         "new_patients": new_patients,
@@ -222,6 +264,7 @@ async def export_invoices_csv(
         .join(Patient, Invoice.patient_id == Patient.id)
         .where(*filters)
         .order_by(Invoice.issued_at.desc())
+        .limit(10_000)
     )
     rows = result.all()
 
@@ -268,6 +311,7 @@ async def export_payments_csv(
         .join(Invoice, Payment.invoice_id == Invoice.id)
         .where(*filters)
         .order_by(Payment.paid_at.desc())
+        .limit(10_000)
     )
     rows = result.all()
 

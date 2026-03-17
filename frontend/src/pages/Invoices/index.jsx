@@ -2,16 +2,13 @@ import { useState, useMemo } from 'react'
 import { Plus, Receipt, Search, Printer, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { useQueryClient } from '@tanstack/react-query'
-import { useInvoices, useCreateInvoice, useRegisterPayment, usePatients } from '../../hooks'
+import { useInvoices, useCreateInvoice, useRegisterPayment, usePatients, useAppConfig } from '../../hooks'
 import { Button, PageHeader, Card, Modal, Input, Select, Badge, Spinner, EmptyState } from '../../components/ui'
 import { printInvoice } from '../../lib/print-invoice'
 
-// IVA_RATE se maneja en el backend (/api/config y routers/invoices.py)
-// Aquí solo se usa para preview visual en el formulario — el backend recalcula y es la fuente de verdad
-const IVA_RATE_DISPLAY = 0.13
 const emptyItem = () => ({ description: '', quantity: '1', unit_price: '' })
 
-function InvoiceForm({ onSubmit, loading }) {
+function InvoiceForm({ onSubmit, loading, ivaRate = 0.13 }) {
   const { data: patients } = usePatients()
   const [patientId, setPatientId] = useState('')
   const [items, setItems] = useState([emptyItem()])
@@ -20,10 +17,10 @@ function InvoiceForm({ onSubmit, loading }) {
   const addItem = () => setItems(prev => [...prev, emptyItem()])
   const removeItem = (idx) => setItems(prev => prev.filter((_, i) => i !== idx))
   // Preview local — solo para mostrar al usuario antes de confirmar
-  // Los montos definitivos los calcula el backend (IVA_RATE en routers/invoices.py)
+  // Los montos definitivos los calcula el backend (IVA en routers/invoices.py)
   const subtotalPreview = useMemo(() =>
     items.reduce((sum, it) => sum + (parseFloat(it.unit_price) || 0) * (parseInt(it.quantity) || 1), 0), [items])
-  const taxPreview = subtotalPreview * IVA_RATE_DISPLAY
+  const taxPreview = subtotalPreview * ivaRate
   const totalPreview = subtotalPreview + taxPreview
   const canSubmit = patientId && items.some(it => it.description && it.unit_price)
   const handleSubmit = () => {
@@ -78,7 +75,7 @@ function InvoiceForm({ onSubmit, loading }) {
 
       <div className="bg-gold-50 border border-gold-200 rounded-lg px-4 py-3 space-y-1.5">
         <div className="flex justify-between text-sm text-gray-600 dark:text-white/70"><span>Subtotal</span><span>₡{subtotalPreview.toFixed(2)}</span></div>
-        <div className="flex justify-between text-sm text-gray-600 dark:text-white/70"><span>IVA (13%)</span><span>₡{taxPreview.toFixed(2)}</span></div>
+        <div className="flex justify-between text-sm text-gray-600 dark:text-white/70"><span>IVA ({(ivaRate * 100).toFixed(0)}%)</span><span>₡{taxPreview.toFixed(2)}</span></div>
         <div className="flex justify-between text-base font-bold text-gold-700 border-t border-gold-200 pt-1.5 mt-1"><span>Total estimado</span><span>₡{totalPreview.toFixed(2)}</span></div>
         <p className="text-[10px] text-gray-400 text-right">El backend recalcula los montos al confirmar</p>
       </div>
@@ -123,6 +120,8 @@ export default function InvoicesPage() {
   const clinic = me?.clinic || null
   const { data: invoices, isLoading } = useInvoices({ status: statusFilter || undefined })
   const { data: patients } = usePatients()
+  const { data: appConfig } = useAppConfig()
+  const ivaRate = appConfig?.iva_rate ?? 0.13
   const createInvoice = useCreateInvoice()
   const registerPayment = useRegisterPayment()
   const patientMap = useMemo(() => {
@@ -211,7 +210,7 @@ export default function InvoicesPage() {
       </Card>
 
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Nueva Factura">
-        <InvoiceForm onSubmit={handleCreateInvoice} loading={createInvoice.isPending} />
+        <InvoiceForm onSubmit={handleCreateInvoice} loading={createInvoice.isPending} ivaRate={ivaRate} />
       </Modal>
       <Modal open={!!paying} onClose={() => setPaying(null)} title="Registrar Pago">
         {paying && <PaymentForm invoice={paying} onSubmit={async data => { await registerPayment.mutateAsync({ invoiceId: paying.id, ...data }); setPaying(null) }} loading={registerPayment.isPending} />}

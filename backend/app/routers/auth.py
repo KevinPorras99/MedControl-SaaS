@@ -3,12 +3,13 @@ import uuid
 import secrets
 import string
 from typing import Annotated, Literal
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.database import get_db
 from app.dependencies import verify_clerk_token
+from app.limiter import limiter
 from app.models.clinic import Clinic
 from app.models.user import User
 from app.schemas import UserOut, ClinicOut
@@ -18,10 +19,10 @@ from sqlalchemy.orm import selectinload
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
-_ACCESS_CODE_RE = re.compile(r'^[A-Z0-9]{6}$')
+_ACCESS_CODE_RE = re.compile(r'^[A-Z0-9]{8}$')
 
 
-def _generate_access_code(length: int = 6) -> str:
+def _generate_access_code(length: int = 8) -> str:
     alphabet = string.ascii_uppercase + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
@@ -58,7 +59,7 @@ class OnboardingRequest(BaseModel):
             return v
         v = v.strip().upper()
         if not _ACCESS_CODE_RE.match(v):
-            raise ValueError("El código de acceso debe tener exactamente 6 caracteres alfanuméricos")
+            raise ValueError("El código de acceso debe tener exactamente 8 caracteres alfanuméricos")
         return v
 
 
@@ -69,7 +70,9 @@ class MeResponse(BaseModel):
 
 # ── Onboarding ───────────────────────────────────────────────────────────────
 @router.post("/onboarding", response_model=MeResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 async def onboarding(
+    request: Request,
     body: OnboardingRequest,
     token_data: Annotated[dict, Depends(verify_clerk_token)],
     db: Annotated[AsyncSession, Depends(get_db)],

@@ -316,11 +316,11 @@ export default function Onboarding() {
               <input
                 className="w-full border border-silver-300 bg-white text-gray-800 placeholder-gray-400 rounded-lg px-3 py-2 text-sm font-mono tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-gold-400"
                 value={joinForm.access_code}
-                onChange={e => setJoin('access_code', e.target.value.toUpperCase().slice(0, 6))}
-                placeholder="ABC123"
-                maxLength={6}
+                onChange={e => setJoin('access_code', e.target.value.toUpperCase().slice(0, 8))}
+                placeholder="ABC12345"
+                maxLength={8}
               />
-              <p className="text-xs text-gray-500 mt-1">El código de 6 caracteres que te compartió el administrador.</p>
+              <p className="text-xs text-gray-500 mt-1">El código de 8 caracteres que te compartió el administrador.</p>
             </div>
 
             <button

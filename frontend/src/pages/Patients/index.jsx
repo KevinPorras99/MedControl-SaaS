@@ -1,9 +1,19 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Users, FileText } from 'lucide-react'
+import { Plus, Search, Users, FileText, Upload } from 'lucide-react'
 import { usePatients, useCreatePatient, useUpdatePatient } from '../../hooks'
 import { Button, PageHeader, Card, Modal, Input, Select, Spinner, EmptyState } from '../../components/ui'
 import { format } from 'date-fns'
+
+// Evita disparar una búsqueda API en cada keystroke
+function useDebounce(value, delay = 350) {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(t)
+  }, [value, delay])
+  return debounced
+}
 
 function PatientForm({ initial, onSubmit, loading }) {
   const [form, setForm] = useState(initial || { full_name: '', phone: '', email: '', birth_date: '', gender: '' })
@@ -38,7 +48,8 @@ export default function PatientsPage() {
   const [selected, setSelected] = useState(null)
 
   const navigate = useNavigate()
-  const { data: patients, isLoading } = usePatients({ search })
+  const debouncedSearch = useDebounce(search, 350)
+  const { data: patients, isLoading } = usePatients({ search: debouncedSearch })
   const createPatient = useCreatePatient()
   const updatePatient = useUpdatePatient()
 
@@ -48,7 +59,16 @@ export default function PatientsPage() {
         <PageHeader
           title="Pacientes"
           subtitle={`${patients?.length || 0} registros`}
-          action={<Button onClick={() => setShowCreate(true)}><Plus size={16} /> Nuevo paciente</Button>}
+          action={
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate('/patients/import')}>
+                <Upload size={16} /> Importar CSV
+              </Button>
+              <Button onClick={() => setShowCreate(true)}>
+                <Plus size={16} /> Nuevo paciente
+              </Button>
+            </div>
+          }
         />
       </div>
 

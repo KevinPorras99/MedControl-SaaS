@@ -1,7 +1,6 @@
-import { useState, useMemo } from 'react'
 import { useUser } from '@clerk/clerk-react'
-import { Users, CalendarDays, Receipt, TrendingUp, Clock, ArrowUpRight, ArrowDownRight } from 'lucide-react'
-import { usePatients, useAppointments, useInvoices, useDashboardStats } from '../hooks'
+import { Users, CalendarDays, Receipt, Clock, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { useAppointments, useDashboardStats } from '../hooks'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import clsx from 'clsx'
@@ -18,7 +17,7 @@ function fmtMonth(yyyymm) {
 }
 
 function fmtCurrency(v) {
-  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(v)
+  return new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 }).format(v)
 }
 
 const YELLOW  = '#EAB308'
@@ -128,21 +127,13 @@ function EmptyChart({ msg = 'Sin datos aún' }) {
 // ── Main ──────────────────────────────────────────
 export default function Dashboard() {
   const { user } = useUser()
-  const { data: patients }     = usePatients()
-  const { data: appointments } = useAppointments({ status: 'programada' })
-  const { data: invoices }     = useInvoices({ status: 'pendiente' })
+  const todayStr = format(new Date(), 'yyyy-MM-dd')
+  // Una sola llamada agrega todos los KPIs y datos de gráficas
   const { data: stats, isLoading: statsLoading } = useDashboardStats()
-
-  const patientsMap = useMemo(() =>
-    Object.fromEntries((patients ?? []).map(p => [p.id, p.full_name])),
-    [patients]
-  )
+  // Lista de citas de hoy para la tabla inferior (filtro de fecha en el backend)
+  const { data: todayAppts } = useAppointments({ date_from: todayStr, date_to: todayStr })
 
   const today = format(new Date(), "EEEE d 'de' MMMM", { locale: es })
-
-  const todayAppts = appointments?.filter(a =>
-    format(new Date(a.appointment_date), 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
-  )
 
   const monthlyRevenue = stats?.monthly_revenue       ?? []
   const weeklyAppts    = stats?.weekly_appointments   ?? []
@@ -172,33 +163,33 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Stats ──────────────────────────────────── */}
+      {/* ── Stats — datos del backend en una sola llamada ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={Users}
           label="Pacientes activos"
-          value={patients?.length}
+          value={stats?.total_active_patients}
           glow="bg-yellow-500"
           trend={null}
         />
         <StatCard
           icon={Clock}
           label="Citas hoy"
-          value={todayAppts?.length}
+          value={stats?.today_appointments}
           glow="bg-teal-500"
           trend={null}
         />
         <StatCard
           icon={CalendarDays}
           label="Citas pendientes"
-          value={appointments?.length}
+          value={stats?.pending_appointments}
           glow="bg-purple-500"
           trend={null}
         />
         <StatCard
           icon={Receipt}
           label="Facturas pendientes"
-          value={invoices?.length}
+          value={stats?.pending_invoices}
           glow="bg-rose-500"
           trend={null}
         />
@@ -382,11 +373,11 @@ export default function Dashboard() {
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center flex-shrink-0">
                       <span className="text-xs font-bold text-yellow-400">
-                        {(patientsMap[appt.patient_id] ?? '?').slice(0, 2).toUpperCase()}
+                        {(appt.patient_name ?? '?').slice(0, 2).toUpperCase()}
                       </span>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-white/90">{patientsMap[appt.patient_id] ?? 'Paciente desconocido'}</p>
+                      <p className="text-sm font-medium text-white/90">{appt.patient_name ?? 'Paciente desconocido'}</p>
                       <p className="text-xs text-white/40">{appt.reason || 'Sin motivo especificado'}</p>
                     </div>
                   </div>

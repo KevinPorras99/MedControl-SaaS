@@ -4,8 +4,11 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
+from app.limiter import limiter
 from app.routers import (
     auth_router,
     patients_router,
@@ -47,6 +50,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# ── Rate limiting ──────────────────────────────────
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 
 # ── Security headers ──────────────────────────────
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -54,10 +61,23 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://clerk.com https://*.clerk.accounts.dev; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: https:; "
+            "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://api.clerk.com; "
+            "font-src 'self' data:; "
+            "frame-ancestors 'none';"
+        )
+        # API responses must not be cached by proxies or shared caches
+        if request.url.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+            response.headers["Pragma"] = "no-cache"
         if settings.app_env == "production":
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
         return response
 
 
@@ -89,6 +109,12 @@ app.include_router(config_router)
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     traceback.print_exc()
+    # Never expose internal exception details to clients in production
+    if settings.app_env == "production":
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Error interno del servidor. Por favor intente más tarde."},
+        )
     return JSONResponse(
         status_code=500,
         content={"detail": f"Error interno: {type(exc).__name__}: {exc}"},
@@ -98,3 +124,4 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 @app.get("/health", tags=["Sistema"])
 async def health_check():
     return {"status": "ok", "version": "1.0.0"}
+

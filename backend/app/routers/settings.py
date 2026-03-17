@@ -149,6 +149,7 @@ async def remove_team_member(
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
 
     member.is_active = False
+    await db.flush()
 
 
 # ── GET datos de la clínica ───────────────────────────────────────────────────

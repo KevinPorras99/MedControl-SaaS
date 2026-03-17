@@ -12,7 +12,13 @@ if (!PUBLISHABLE_KEY) throw new Error('Falta VITE_CLERK_PUBLISHABLE_KEY en .env'
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 1000 * 60 * 5, retry: 1 },
+    queries: {
+      staleTime: 1000 * 60 * 5,   // datos frescos por 5 min — evita refetches innecesarios
+      gcTime: 1000 * 60 * 15,     // mantener cache 15 min antes de limpiar
+      retry: 1,
+      refetchOnWindowFocus: false, // no refetch al volver de otra pestaña
+      refetchOnReconnect: true,    // sí refetch al recuperar red
+    },
   },
 })
 

@@ -1,10 +1,11 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import httpx
 from app.config import settings
 from app.dependencies import get_current_user
+from app.limiter import limiter
 
 router = APIRouter(prefix="/api/assistant", tags=["Asistente"])
 
@@ -24,16 +25,18 @@ Si no sabes algo sobre el sistema, sugiere contactar al administrador."""
 
 
 class Message(BaseModel):
-    role: str
-    content: str
+    role: str = Field(..., pattern="^(user|assistant)$")
+    content: str = Field(..., min_length=1, max_length=4000)
 
 
 class ChatRequest(BaseModel):
-    messages: list[Message]
+    # Max 20 turns to cap token usage and prevent abuse
+    messages: list[Message] = Field(..., min_length=1, max_length=20)
 
 
 @router.post("/chat")
-async def chat(body: ChatRequest, user=Depends(get_current_user)):
+@limiter.limit("20/minute")
+async def chat(request: Request, body: ChatRequest, user=Depends(get_current_user)):
     if not settings.groq_api_key:
         raise HTTPException(status_code=503, detail="Asistente no configurado")
 
