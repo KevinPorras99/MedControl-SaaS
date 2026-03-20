@@ -9,8 +9,10 @@ from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.dependencies import CurrentUser, RequireAnyRole
 from app.models.appointment import Appointment
+from app.models.clinic import Clinic
 from app.schemas import AppointmentCreate, AppointmentOut, AppointmentUpdate
 from app.services.whatsapp import schedule_reminder
+from app.services.email import send_appointment_confirmation
 
 router = APIRouter(prefix="/api/appointments", tags=["Citas"])
 
@@ -95,6 +97,25 @@ async def create_appointment(
     # Programar recordatorio WhatsApp (no-crítico, no debe romper la cita)
     try:
         await schedule_reminder(appointment, db)
+    except Exception:
+        pass
+
+    # Enviar email de confirmación al paciente (no-crítico)
+    try:
+        if appointment.patient and appointment.patient.email:
+            clinic_result = await db.execute(
+                select(Clinic).where(Clinic.id == current_user.clinic_id)
+            )
+            clinic = clinic_result.scalar_one_or_none()
+            await send_appointment_confirmation(
+                patient_email=appointment.patient.email,
+                patient_name=appointment.patient.full_name,
+                doctor_name=appointment.doctor.full_name if appointment.doctor else "Médico",
+                clinic_name=clinic.name if clinic else "Clínica",
+                appointment_date=appointment.appointment_date,
+                duration_minutes=appointment.duration_minutes,
+                reason=appointment.reason,
+            )
     except Exception:
         pass
 

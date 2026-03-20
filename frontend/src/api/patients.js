@@ -35,6 +35,14 @@ export const patientsApi = {
   update: (api, { id, ...data }) =>
     api.patch(`/api/patients/${id}`, data).then(r => r.data),
 
+  /** Elimina (soft-delete) un paciente. */
+  delete: (api, id) =>
+    api.delete(`/api/patients/${id}`),
+
+  /** Genera un link de acceso al portal para el paciente. */
+  generatePortalToken: (api, patientId) =>
+    api.post(`/api/patients/${patientId}/portal-token`).then(r => r.data),
+
   // ── Importación masiva ─────────────────────────────────────────────────────
 
   /** Descarga la plantilla CSV de importación. */

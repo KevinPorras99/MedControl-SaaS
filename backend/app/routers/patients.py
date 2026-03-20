@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import CurrentUser, RequireAnyRole, RequireReception, RequireAdmin, RequireClinical
 from app.models.patient import Patient
@@ -172,6 +173,27 @@ async def confirm_import(
 # ── Paciente individual ────────────────────────────────────────────────────────
 # Estas rutas van AL FINAL para que /{patient_id} no capture "import" ni otros segmentos fijos.
 
+@router.post("/{patient_id}/portal-token", dependencies=[RequireClinical])
+async def generate_portal_token(
+    patient_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Genera un link de acceso al portal para el paciente (válido 30 días)."""
+    from app.services.portal_auth import create_portal_token
+
+    result = await db.execute(
+        select(Patient).where(Patient.id == patient_id, Patient.clinic_id == current_user.clinic_id)
+    )
+    patient = result.scalar_one_or_none()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Paciente no encontrado")
+
+    token = create_portal_token(patient.id, patient.clinic_id)
+    portal_url = f"{settings.app_frontend_url}/portal?token={token}"
+    return {"token": token, "portal_url": portal_url}
+
+
 @router.get("/{patient_id}", response_model=PatientOut, dependencies=[RequireAnyRole])
 async def get_patient(
     patient_id: uuid.UUID,
@@ -185,6 +207,22 @@ async def get_patient(
     if not patient:
         raise HTTPException(status_code=404, detail="Paciente no encontrado")
     return patient
+
+
+@router.delete("/{patient_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[RequireAdmin])
+async def delete_patient(
+    patient_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await db.execute(
+        select(Patient).where(Patient.id == patient_id, Patient.clinic_id == current_user.clinic_id)
+    )
+    patient = result.scalar_one_or_none()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Paciente no encontrado")
+    patient.is_active = False
+    await db.flush()
 
 
 @router.patch("/{patient_id}", response_model=PatientOut, dependencies=[RequireClinical])

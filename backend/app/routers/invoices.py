@@ -1,5 +1,6 @@
 import json
 import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -10,6 +11,7 @@ from app.database import get_db
 from app.dependencies import CurrentUser, RequireAnyRole, RequireClinical
 from app.models.invoice import Invoice
 from app.models.payment import Payment
+from app.models.inventory import InventoryItem, InventoryMovement
 from app.schemas import InvoiceCreate, InvoiceOut, InvoiceUpdate, PaymentCreate, PaymentOut
 from app.services.invoice_number import generate_invoice_number
 
@@ -47,6 +49,28 @@ async def create_invoice(
     tax = (subtotal * IVA_RATE).quantize(Decimal("0.01"))
     total = subtotal + tax
 
+    # Validar stock de ítems vinculados al inventario antes de crear la factura
+    inv_deductions: list[tuple[InventoryItem, int]] = []
+    for item in body.items:
+        if item.inventory_item_id is None:
+            continue
+        res = await db.execute(
+            select(InventoryItem).where(
+                InventoryItem.id == item.inventory_item_id,
+                InventoryItem.clinic_id == current_user.clinic_id,
+                InventoryItem.is_active == True,
+            )
+        )
+        inv_item = res.scalar_one_or_none()
+        if not inv_item:
+            continue  # ítem eliminado o de otra clínica — se ignora silenciosamente
+        if inv_item.stock < item.quantity:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Stock insuficiente para '{inv_item.name}' (disponible: {inv_item.stock}, solicitado: {item.quantity})",
+            )
+        inv_deductions.append((inv_item, item.quantity))
+
     invoice_number = await generate_invoice_number(current_user.clinic_id, db)
     invoice = Invoice(
         patient_id=body.patient_id,
@@ -60,6 +84,21 @@ async def create_invoice(
     )
     db.add(invoice)
     await db.flush()
+
+    # Descontar stock y registrar movimientos de salida
+    now = datetime.now(timezone.utc)
+    for inv_item, qty in inv_deductions:
+        inv_item.stock -= qty
+        inv_item.updated_at = now
+        db.add(InventoryMovement(
+            clinic_id=current_user.clinic_id,
+            item_id=inv_item.id,
+            user_id=current_user.id,
+            type="salida",
+            quantity=-qty,
+            reason=f"Factura {invoice_number}",
+        ))
+
     await db.refresh(invoice)
     return invoice
 

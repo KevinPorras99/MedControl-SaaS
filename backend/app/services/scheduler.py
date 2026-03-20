@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 _INTERVAL_SECONDS = 300   # cada 5 minutos
 _BATCH_SIZE       = 50    # máximo de logs por ciclo
 _task: asyncio.Task | None = None
+_follow_up_task: asyncio.Task | None = None
+_FOLLOW_UP_INTERVAL = 3600  # check every hour
 
 
 async def _send_pending_reminders() -> None:
@@ -91,15 +93,78 @@ async def _loop() -> None:
             logger.error("[Scheduler] Excepción no controlada: %s", exc)
 
 
+async def _send_due_follow_ups() -> None:
+    """Envía emails de seguimiento para los recordatorios con due_date = hoy."""
+    from datetime import date as date_type
+    from sqlalchemy import select
+    from app.database import AsyncSessionLocal
+    from app.models.follow_up_reminder import FollowUpReminder
+    from app.models.clinic import Clinic
+    from app.services.email import send_follow_up_reminder
+
+    today = date_type.today()
+    async with AsyncSessionLocal() as session:
+        try:
+            from sqlalchemy.orm import selectinload
+            result = await session.execute(
+                select(FollowUpReminder)
+                .options(
+                    selectinload(FollowUpReminder.patient),
+                    selectinload(FollowUpReminder.doctor),
+                )
+                .where(
+                    FollowUpReminder.status == "pending",
+                    FollowUpReminder.due_date == today,
+                )
+            )
+            reminders = result.scalars().all()
+
+            for reminder in reminders:
+                if not reminder.patient or not reminder.patient.email:
+                    continue
+
+                clinic_result = await session.execute(
+                    select(Clinic).where(Clinic.id == reminder.clinic_id)
+                )
+                clinic = clinic_result.scalar_one_or_none()
+                clinic_name = clinic.name if clinic else "Clínica"
+
+                sent = await send_follow_up_reminder(
+                    patient_email=reminder.patient.email,
+                    patient_name=reminder.patient.full_name,
+                    doctor_name=reminder.doctor.full_name if reminder.doctor else "Médico",
+                    clinic_name=clinic_name,
+                    due_date=reminder.due_date,
+                    notes=reminder.notes,
+                )
+                if sent:
+                    reminder.status = "sent"
+
+            await session.commit()
+        except Exception as exc:
+            logger.error("[Scheduler] Error en seguimientos: %s", exc)
+            await session.rollback()
+
+
+async def _follow_up_loop() -> None:
+    while True:
+        await asyncio.sleep(_FOLLOW_UP_INTERVAL)
+        await _send_due_follow_ups()
+
+
 def start_scheduler() -> None:
     """Arranca el worker como tarea asyncio. Llamar desde el lifespan de FastAPI."""
-    global _task
+    global _task, _follow_up_task
     _task = asyncio.create_task(_loop(), name="whatsapp_reminder_worker")
+    _follow_up_task = asyncio.create_task(_follow_up_loop(), name="follow_up_reminder_worker")
 
 
 def stop_scheduler() -> None:
     """Cancela el worker. Llamar en el shutdown del lifespan."""
-    global _task
+    global _task, _follow_up_task
     if _task and not _task.done():
         _task.cancel()
         logger.info("[Scheduler] Detenido.")
+    if _follow_up_task and not _follow_up_task.done():
+        _follow_up_task.cancel()
+        logger.info("[Scheduler] Follow-up worker detenido.")

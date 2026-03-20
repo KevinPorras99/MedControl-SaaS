@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Users, FileText, Upload } from 'lucide-react'
-import { usePatients, useCreatePatient, useUpdatePatient } from '../../hooks'
+import { Plus, Search, Users, FileText, Upload, Trash2 } from 'lucide-react'
+import { usePatients, useCreatePatient, useUpdatePatient, useDeletePatient } from '../../hooks'
 import { Button, PageHeader, Card, Modal, Input, Select, Spinner, EmptyState } from '../../components/ui'
 import { format } from 'date-fns'
 
@@ -46,12 +46,14 @@ export default function PatientsPage() {
   const [search, setSearch] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [selected, setSelected] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const navigate = useNavigate()
   const debouncedSearch = useDebounce(search, 350)
   const { data: patients, isLoading } = usePatients({ search: debouncedSearch })
   const createPatient = useCreatePatient()
   const updatePatient = useUpdatePatient()
+  const deletePatient = useDeletePatient()
 
   return (
     <div>
@@ -127,13 +129,43 @@ export default function PatientsPage() {
       </Modal>
 
       {/* Edit Modal */}
-      <Modal open={!!selected} onClose={() => setSelected(null)} title="Editar Paciente">
+      <Modal open={!!selected} onClose={() => { setSelected(null); setConfirmDelete(false) }} title="Editar Paciente">
         {selected && (
-          <PatientForm
-            initial={selected}
-            onSubmit={async data => { await updatePatient.mutateAsync({ id: selected.id, ...data }); setSelected(null) }}
-            loading={updatePatient.isPending}
-          />
+          <>
+            <PatientForm
+              initial={selected}
+              onSubmit={async data => { await updatePatient.mutateAsync({ id: selected.id, ...data }); setSelected(null) }}
+              loading={updatePatient.isPending}
+            />
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
+              {!confirmDelete ? (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 transition-colors"
+                >
+                  <Trash2 size={14} /> Eliminar paciente
+                </button>
+              ) : (
+                <div className="flex items-center justify-between gap-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-400/20 rounded-lg px-3 py-2">
+                  <p className="text-sm text-red-700 dark:text-red-400">¿Eliminar a <strong>{selected.full_name}</strong>?</p>
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={() => setConfirmDelete(false)} className="text-xs text-gray-500 hover:text-gray-700 transition-colors">Cancelar</button>
+                    <button
+                      onClick={async () => {
+                        await deletePatient.mutateAsync(selected.id)
+                        setSelected(null)
+                        setConfirmDelete(false)
+                      }}
+                      disabled={deletePatient.isPending}
+                      className="text-xs font-semibold text-red-600 hover:text-red-800 disabled:opacity-50 transition-colors"
+                    >
+                      {deletePatient.isPending ? 'Eliminando...' : 'Sí, eliminar'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </Modal>
     </div>

@@ -17,6 +17,7 @@ import { authApi }         from '../api/auth'
 import { billingApi }      from '../api/billing'
 import { remindersApi }   from '../api/reminders'
 import { consentsApi }    from '../api/consents'
+import { inventoryApi }  from '../api/inventory'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Auth
@@ -563,5 +564,87 @@ export function useSignConsent() {
       toast.success('Consentimiento firmado y guardado')
     },
     onError: (e) => toast.error(e.message),
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inventory
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function useInventory(filters = {}) {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['inventory', filters],
+    queryFn: () => inventoryApi.list(api, filters),
+  })
+}
+
+export function useInventorySummary() {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['inventory', 'summary'],
+    queryFn: () => inventoryApi.summary(api),
+  })
+}
+
+export function useInventoryMovements(itemId) {
+  const api = useApi()
+  return useQuery({
+    queryKey: ['inventory', 'movements', itemId],
+    queryFn: () => inventoryApi.movements(api, itemId),
+    enabled: !!itemId,
+  })
+}
+
+export function useCreateInventoryItem() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => inventoryApi.create(api, data),
+    onSuccess: () => {
+      qc.invalidateQueries(['inventory'])
+      toast.success('Ítem creado')
+    },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+export function useUpdateInventoryItem() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data) => inventoryApi.update(api, data),
+    onSuccess: () => {
+      qc.invalidateQueries(['inventory'])
+      toast.success('Ítem actualizado')
+    },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+export function useDeleteInventoryItem() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => inventoryApi.delete(api, id),
+    onSuccess: () => {
+      qc.invalidateQueries(['inventory'])
+      toast.success('Ítem eliminado')
+    },
+    onError: (e) => toast.error(e.message),
+  })
+}
+
+export function useAddInventoryMovement() {
+  const api = useApi()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ itemId, ...data }) => inventoryApi.addMovement(api, itemId, data),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries(['inventory'])
+      qc.invalidateQueries(['inventory', 'movements', vars.itemId])
+      toast.success('Movimiento registrado')
+    },
+    onError: (e) => toast.error(e?.response?.data?.detail || e.message),
   })
 }

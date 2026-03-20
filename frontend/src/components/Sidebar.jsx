@@ -7,7 +7,7 @@ import { useMe } from '../hooks'
 import {
   LayoutDashboard, Users, CalendarDays,
   Receipt, Settings2, Copy, Check, Moon, Sun,
-  BarChart3, ClipboardList, Stethoscope, HelpCircle, Building2
+  BarChart3, ClipboardList, Stethoscope, HelpCircle, Building2, Package
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -18,9 +18,10 @@ const NAV_PRINCIPAL = [
 ]
 
 const NAV_CLINICA = [
-  { to: '/records',  icon: ClipboardList, label: 'Historial Clínico' },
-  { to: '/invoices', icon: Receipt,       label: 'Facturación' },
-  { to: '/reports',  icon: BarChart3,     label: 'Reportes' },
+  { to: '/records',   icon: ClipboardList, label: 'Historial Clínico' },
+  { to: '/invoices',  icon: Receipt,       label: 'Facturación' },
+  { to: '/inventory', icon: Package,       label: 'Inventario' },
+  { to: '/reports',   icon: BarChart3,     label: 'Reportes' },
 ]
 
 const NAV_ADMIN = [

@@ -24,6 +24,7 @@ from app.routers import (
     reminders_router,
     portal_router,
     consents_router,
+    inventory_router,
 )
 from app.services.scheduler import start_scheduler, stop_scheduler
 
@@ -111,6 +112,7 @@ app.include_router(notifications_router)
 app.include_router(reminders_router)
 app.include_router(portal_router)
 app.include_router(consents_router)
+app.include_router(inventory_router)
 # app.include_router(billing_router)  # deshabilitado hasta configurar Stripe
 
 

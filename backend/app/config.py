@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     app_frontend_url: str = "http://localhost:5173"
     # Groq AI Assistant (free tier)
     groq_api_key: str = ""
+    # Resend (email transaccional)
+    resend_api_key: str = ""
+    resend_email_from: str = "MedControl <onboarding@resend.dev>"
+    # Portal del paciente (JWT independiente de Clerk)
+    portal_secret_key: str = ""
 
     @property
     def allowed_origins(self) -> list[str]:

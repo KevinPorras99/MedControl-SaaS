@@ -207,3 +207,109 @@ async def upload_attachment(
         mime_type=att.mime_type,
         created_at=att.created_at,
     )
+
+
+# ── GET exportar expediente en PDF ───────────────────────────────────────────
+@router.get("/{patient_id}/export/pdf", dependencies=[RequireClinical])
+async def export_patient_pdf(
+    patient_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    from fastapi.responses import Response as FastAPIResponse
+    from app.models.patient import Patient
+    from app.models.clinic import Clinic
+    from app.services.pdf_records import generate_patient_record_pdf
+
+    pat_result = await db.execute(
+        select(Patient).where(
+            Patient.id == patient_id,
+            Patient.clinic_id == current_user.clinic_id,
+        )
+    )
+    patient = pat_result.scalar_one_or_none()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Paciente no encontrado")
+
+    q = (
+        select(MedicalRecord)
+        .options(
+            selectinload(MedicalRecord.attachments),
+            selectinload(MedicalRecord.doctor),
+        )
+        .where(
+            MedicalRecord.clinic_id == current_user.clinic_id,
+            MedicalRecord.patient_id == patient_id,
+        )
+        .order_by(MedicalRecord.created_at.asc())
+    )
+    if current_user.role == "doctor":
+        q = q.where(MedicalRecord.doctor_id == current_user.id)
+
+    rec_result = await db.execute(q)
+    records = rec_result.scalars().all()
+
+    clinic_result = await db.execute(
+        select(Clinic).where(Clinic.id == current_user.clinic_id)
+    )
+    clinic = clinic_result.scalar_one_or_none()
+    clinic_name = clinic.name if clinic else "Clinica"
+
+    pdf_bytes = await generate_patient_record_pdf(patient, records, clinic_name)
+
+    return FastAPIResponse(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=expediente_{patient_id}.pdf"},
+    )
+
+
+# ── GET receta en PDF ─────────────────────────────────────────────────────────
+@router.get("/{record_id}/prescription/pdf", dependencies=[RequireClinical])
+async def export_prescription_pdf(
+    record_id: uuid.UUID,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    from fastapi.responses import Response as FastAPIResponse
+    from app.models.patient import Patient
+    from app.models.clinic import Clinic
+    from app.models.user import User
+    from app.services.pdf_prescription import generate_prescription_pdf
+    from app.config import settings
+
+    result = await db.execute(
+        select(MedicalRecord)
+        .options(
+            selectinload(MedicalRecord.doctor),
+            selectinload(MedicalRecord.patient),
+        )
+        .where(
+            MedicalRecord.id == record_id,
+            MedicalRecord.clinic_id == current_user.clinic_id,
+        )
+    )
+    record = result.scalar_one_or_none()
+    if not record:
+        raise HTTPException(status_code=404, detail="Expediente no encontrado")
+    if not record.prescription:
+        raise HTTPException(status_code=400, detail="Este expediente no tiene receta")
+
+    clinic_result = await db.execute(
+        select(Clinic).where(Clinic.id == current_user.clinic_id)
+    )
+    clinic = clinic_result.scalar_one_or_none()
+
+    pdf_bytes = await generate_prescription_pdf(
+        record=record,
+        patient=record.patient,
+        doctor=record.doctor,
+        clinic=clinic,
+        frontend_url=settings.app_frontend_url,
+    )
+
+    return FastAPIResponse(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename=receta_{record_id}.pdf"},
+    )

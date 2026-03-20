@@ -1,6 +1,6 @@
 import { useUser } from '@clerk/clerk-react'
-import { Users, CalendarDays, Receipt, Clock, ArrowUpRight, ArrowDownRight } from 'lucide-react'
-import { useAppointments, useDashboardStats } from '../hooks'
+import { Users, CalendarDays, Receipt, Clock, ArrowUpRight, ArrowDownRight, CalendarClock } from 'lucide-react'
+import { useAppointments, useDashboardStats, useReminders } from '../hooks'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import clsx from 'clsx'
@@ -132,6 +132,10 @@ export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats()
   // Lista de citas de hoy para la tabla inferior (filtro de fecha en el backend)
   const { data: todayAppts } = useAppointments({ date_from: todayStr, date_to: todayStr })
+  const { data: pendingReminders = [] } = useReminders({ status: 'pending' })
+  const upcomingReminders = pendingReminders
+    .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
+    .slice(0, 5)
 
   const today = format(new Date(), "EEEE d 'de' MMMM", { locale: es })
 
@@ -393,6 +397,36 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* ── Upcoming Follow-ups ─────────────────────── */}
+      {upcomingReminders.length > 0 && (
+        <div className={clsx(
+          'relative overflow-hidden rounded-2xl',
+          'bg-white/[0.03] border border-white/[0.07]',
+          'backdrop-blur-2xl shadow-2xl'
+        )}>
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+          <div className="p-6">
+            <div className="flex items-center gap-2 mb-5">
+              <CalendarClock size={16} className="text-yellow-400" />
+              <h2 className="text-sm font-semibold text-white">Proximos seguimientos</h2>
+            </div>
+            <ul className="space-y-2">
+              {upcomingReminders.map(r => (
+                <li key={r.id} className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-200">
+                  <div>
+                    <p className="text-sm font-medium text-white/90">{r.patient_name}</p>
+                    <p className="text-xs text-white/40">Dr. {r.doctor_name}</p>
+                  </div>
+                  <span className="text-xs font-semibold text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 rounded-full">
+                    {new Date(r.due_date + 'T00:00:00').toLocaleDateString('es', { day: '2-digit', month: '2-digit' })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
     </div>
   )

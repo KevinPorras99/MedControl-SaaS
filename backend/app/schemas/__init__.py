@@ -267,6 +267,7 @@ class InvoiceItemIn(BaseModel):
     description: str
     quantity: int = 1
     unit_price: Decimal
+    inventory_item_id: uuid.UUID | None = None  # Si viene del inventario, descuenta stock
 
     @field_validator("description")
     @classmethod

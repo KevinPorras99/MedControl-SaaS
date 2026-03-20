@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Clock, ShieldAlert } from 'lucide-react'
 import Sidebar from './Sidebar'
 import MedicalAssistant from './MedicalAssistant'
+import NotificationBell from './NotificationBell'
 import { useApi } from '../lib/api'
 import { useSessionTimeout } from '../hooks/useSessionTimeout'
 
@@ -78,7 +79,10 @@ export default function Layout() {
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="flex justify-end px-6 pt-4">
+          <NotificationBell />
+        </div>
+        <div className="max-w-7xl mx-auto px-6 pb-8">
           <Outlet />
         </div>
       </main>

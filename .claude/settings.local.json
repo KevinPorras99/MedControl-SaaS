@@ -24,7 +24,8 @@
       "Bash(python -c \":*)",
       "Bash(node -e \":*)",
       "Bash(find 'c:/Users/DELL/OneDrive/Desktop/Proyectos 2026/MedControl-SaaS' -name .env* -o -name *.example)",
-      "Bash(grep -r \"print\\\\|console.log\" 'c:/Users/DELL/OneDrive/Desktop/Proyectos 2026/MedControl-SaaS/backend/app' --include=*.py)"
+      "Bash(grep -r \"print\\\\|console.log\" 'c:/Users/DELL/OneDrive/Desktop/Proyectos 2026/MedControl-SaaS/backend/app' --include=*.py)",
+      "Read(//c/Users/DELL/OneDrive/Desktop/Proyectos 2026/MedControl-SaaS/**)"
     ],
     "additionalDirectories": [
       "c:\\Users\\DELL\\.claude\\projects\\c--Users-DELL-OneDrive-Desktop-MedControl-SaaS",

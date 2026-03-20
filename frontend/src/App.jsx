@@ -24,6 +24,8 @@ const OnboardingPage     = lazy(() => import('./pages/Onboarding'))
 const LandingPage        = lazy(() => import('./pages/Landing'))
 const LoginPage          = lazy(() => import('./pages/Login'))
 const CheckoutPage       = lazy(() => import('./pages/Checkout'))
+const PortalPage         = lazy(() => import('./pages/Portal'))
+const InventoryPage      = lazy(() => import('./pages/Inventory'))
 
 // Fallback minimalista mientras se carga el chunk de la página
 function PageLoader() {
@@ -80,6 +82,9 @@ function AppRoutes() {
           {/* Facturación */}
           <Route path="invoices/*" element={<InvoicesPage />} />
 
+          {/* Inventario */}
+          <Route path="inventory" element={<InventoryPage />} />
+
           {/* Reportes */}
           <Route path="reports" element={<ReportsPage />} />
 
@@ -102,6 +107,20 @@ function AppRoutes() {
 }
 
 export default function App() {
+  // El portal tiene su propio auth (JWT) — renderizar antes que Clerk
+  if (window.location.pathname.startsWith('/portal')) {
+    return (
+      <BrowserRouter>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/portal" element={<PortalPage />} />
+            <Route path="*" element={<PortalPage />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    )
+  }
+
   return (
     <ThemeProvider>
       <BrowserRouter>
