@@ -23,6 +23,20 @@ class Clinic(Base):
     email: Mapped[str | None] = mapped_column(String(255))
     phone: Mapped[str | None] = mapped_column(String(50))
     address: Mapped[str | None] = mapped_column(String(500))
+    # Perfil completo
+    legal_id:      Mapped[str | None] = mapped_column(String(50))    # Cédula jurídica
+    specialty:     Mapped[str | None] = mapped_column(String(100))   # Tipo de clínica
+    schedule:      Mapped[str | None] = mapped_column(String(1000))  # Horario de atención
+    city:          Mapped[str | None] = mapped_column(String(100))
+    province:      Mapped[str | None] = mapped_column(String(100))
+    country:       Mapped[str | None] = mapped_column(String(100), default="Costa Rica")
+    postal_code:   Mapped[str | None] = mapped_column(String(20))
+    whatsapp:      Mapped[str | None] = mapped_column(String(50))
+    second_phone:  Mapped[str | None] = mapped_column(String(50))
+    website:       Mapped[str | None] = mapped_column(String(255))
+    instagram:     Mapped[str | None] = mapped_column(String(255))
+    facebook:      Mapped[str | None] = mapped_column(String(255))
+    logo_url:      Mapped[str | None] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

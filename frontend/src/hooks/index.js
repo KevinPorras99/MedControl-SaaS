@@ -319,11 +319,11 @@ export function useDashboardStats() {
   })
 }
 
-export function useFinancialReport({ dateFrom, dateTo } = {}) {
+export function useFinancialReport({ dateFrom, dateTo, period } = {}) {
   const api = useApi()
   return useQuery({
-    queryKey: ['reports', 'financial', dateFrom, dateTo],
-    queryFn: () => reportsApi.financial(api, { dateFrom, dateTo }),
+    queryKey: ['reports', 'financial', dateFrom, dateTo, period],
+    queryFn: () => reportsApi.financial(api, { dateFrom, dateTo, period }),
     staleTime: 1000 * 60 * 3,
   })
 }

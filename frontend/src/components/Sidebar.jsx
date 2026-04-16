@@ -7,7 +7,7 @@ import { useMe } from '../hooks'
 import {
   LayoutDashboard, Users, CalendarDays,
   Receipt, Settings2, Copy, Check, Moon, Sun,
-  BarChart3, ClipboardList, Stethoscope, HelpCircle, Building2, Package
+  BarChart3, ClipboardList, Stethoscope, HelpCircle, Building2, Package, Crown
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -84,7 +84,9 @@ export default function Sidebar() {
   const qc = useQueryClient()
   const { theme, toggleTheme } = useTheme()
   const me = qc.getQueryData(['me'])
-  const isAdmin = me?.user?.role === 'admin_clinic'
+  const role = me?.user?.role
+  const isAdmin = role === 'admin_clinic'
+  const isSuperAdmin = role === 'superadmin'
   const accessCode = me?.clinic?.access_code
 
   return (
@@ -96,21 +98,31 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-1">
-        <NavSection items={NAV_PRINCIPAL} />
-        <div className="my-2 border-t border-gray-300/30 dark:border-white/[0.06]" />
-        <NavSection title="Clínica" items={NAV_CLINICA} />
-        {isAdmin && (
+        {isSuperAdmin ? (
+          // Superadmin solo ve su panel
+          <NavSection
+            title="Plataforma"
+            items={[{ to: '/superadmin', icon: Crown, label: 'Panel Superadmin' }]}
+          />
+        ) : (
           <>
+            <NavSection items={NAV_PRINCIPAL} />
             <div className="my-2 border-t border-gray-300/30 dark:border-white/[0.06]" />
-            <NavSection title="Administración" items={NAV_ADMIN} />
+            <NavSection title="Clínica" items={NAV_CLINICA} />
+            {isAdmin && (
+              <>
+                <div className="my-2 border-t border-gray-300/30 dark:border-white/[0.06]" />
+                <NavSection title="Administración" items={NAV_ADMIN} />
+              </>
+            )}
           </>
         )}
         <div className="my-2 border-t border-gray-300/30 dark:border-white/[0.06]" />
         <NavSection items={[{ to: '/help', icon: HelpCircle, label: 'Ayuda' }]} />
       </nav>
 
-      {/* Código de acceso (solo admin) */}
-      {isAdmin && accessCode && <AccessCodeBadge code={accessCode} />}
+      {/* Código de acceso (solo admin de clínica) */}
+      {isAdmin && !isSuperAdmin && accessCode && <AccessCodeBadge code={accessCode} />}
 
       {/* Theme Toggle & User */}
       <div className="px-4 py-3 border-t border-gray-300/50 dark:border-white/[0.08] space-y-3">

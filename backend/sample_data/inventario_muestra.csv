@@ -1,0 +1,31 @@
+nombre,categoria,unidad,sku,stock_inicial,stock_minimo,precio_costo,proveedor,notas
+Paracetamol 500mg,medicamentos,tableta,MED-PAR-500,500,100,85.00,Farmacéutica Nacional CR,Analgésico y antipirético de uso general
+Amoxicilina 250mg/5ml,medicamentos,frasco,MED-AMO-250,80,20,2150.00,Distribuidora Médica Valle,Antibiótico pediátrico suspensión
+Ibuprofeno 400mg,medicamentos,tableta,MED-IBU-400,350,80,120.00,Farmacéutica Nacional CR,Antiinflamatorio AINE
+Omeprazol 20mg,medicamentos,cápsula,MED-OME-20,200,50,95.00,MedSupply Costa Rica,Inhibidor bomba protones
+Metformina 850mg,medicamentos,tableta,MED-MET-850,180,40,110.00,Distribuidora Médica Valle,Antidiabético oral
+Losartán 50mg,medicamentos,tableta,MED-LOS-50,220,60,130.00,Farmacéutica Nacional CR,Antihipertensivo ARB
+Atorvastatina 20mg,medicamentos,tableta,MED-ATO-20,160,40,175.00,MedSupply Costa Rica,Hipolipemiante estatina
+Salbutamol inhalador,medicamentos,unidad,MED-SAL-INH,45,15,3800.00,Respiratorio CR SA,Broncodilatador beta-2 agonista
+Guantes nitrilo talla M,material_quirurgico,caja,GNT-M-100,25,8,6200.00,Suministros Quirúrgicos CR,Caja de 100 unidades sin polvo
+Guantes nitrilo talla S,material_quirurgico,caja,GNT-S-100,18,8,6200.00,Suministros Quirúrgicos CR,Caja de 100 unidades sin polvo
+Mascarillas quirúrgicas,material_quirurgico,caja,MQU-BOX-50,40,15,2800.00,Suministros Quirúrgicos CR,Caja 50 unidades 3 capas
+Jeringas 5ml c/aguja,material_quirurgico,caja,JER-5ML-100,30,10,4500.00,Distribuidora Médica Valle,Caja 100 unidades estériles
+Gasas estériles 10x10,material_quirurgico,caja,GAS-10X10,55,20,1850.00,MedSupply Costa Rica,Caja 100 sobres estériles individuales
+Esparadrapo 5m x 2.5cm,material_quirurgico,rollo,ESP-5M-25,60,25,950.00,Suministros Quirúrgicos CR,Tela microporosa
+Alcohol isopropílico 70%,material_quirurgico,litro,ALC-ISO-70,35,12,1200.00,Farmacéutica Nacional CR,Antiséptico uso externo
+Oxímetro de pulso,equipos,unidad,EQP-OXI-01,8,2,28500.00,Equipos Médicos del Pacífico,Con pantalla OLED y alarma
+Tensiómetro digital,equipos,unidad,EQP-TEN-DIG,5,2,45000.00,Equipos Médicos del Pacífico,Automático brazo adulto
+Termómetro infrarrojo,equipos,unidad,EQP-TER-IR,6,2,18500.00,Equipos Médicos del Pacífico,Sin contacto lectura 1 seg
+Glucómetro Accu-Chek,equipos,unidad,EQP-GLU-AC,4,2,32000.00,Distribuidora Médica Valle,Incluye 10 lancetas y tiras
+Estetoscopio Littmann,equipos,unidad,EQP-EST-LIT,3,1,85000.00,Equipos Médicos del Pacífico,Clásico II adulto negro
+Tubos EDTA 3ml,insumos_lab,caja,LAB-EDTA-3,120,30,3200.00,Lab Supplies CR,Caja 100 tubos tapa lila
+Tubos serum 5ml,insumos_lab,caja,LAB-SER-5,100,25,3500.00,Lab Supplies CR,Caja 100 tubos tapa roja
+Lancetas 28G,insumos_lab,caja,LAB-LAN-28,80,20,1800.00,Distribuidora Médica Valle,Caja 200 unidades estériles
+Tiras glucemia Accu-Chek,insumos_lab,caja,LAB-TIR-GL,35,10,12500.00,Distribuidora Médica Valle,Caja 50 tiras reactivas
+Porta objetos 76x26mm,insumos_lab,caja,LAB-POR-76,25,8,2100.00,Lab Supplies CR,Caja 50 unidades
+Cubre objetos 18x18mm,insumos_lab,caja,LAB-CUB-18,25,8,1650.00,Lab Supplies CR,Caja 100 unidades
+Agua destilada 1L,insumos_lab,litro,LAB-AGD-1,20,5,850.00,Farmacéutica Nacional CR,Para uso en laboratorio
+Bolsas para residuos bioinfecciosos,otros,unidad,OTR-BOL-BIO,200,50,280.00,Suministros Quirúrgicos CR,Color rojo 60x90cm calibre 200
+Detergente enzimático,otros,litro,OTR-DET-ENZ,12,4,8500.00,MedSupply Costa Rica,Concentrado limpieza instrumental
+Toallas de papel,otros,rollo,OTR-TOA-PAP,80,30,450.00,Distribuidora Médica Valle,Rollo jumbo institucional

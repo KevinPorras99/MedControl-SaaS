@@ -160,6 +160,7 @@ async def financial_summary(
     db: Annotated[AsyncSession, Depends(get_db)],
     date_from: date | None = Query(None, description="Fecha inicial (YYYY-MM-DD)"),
     date_to: date | None = Query(None, description="Fecha final (YYYY-MM-DD)"),
+    period: str = Query("mensual", description="Agrupación del gráfico: mensual | semanal | anual"),
 ):
     """Resumen financiero de la clínica con filtros opcionales de fecha."""
     clinic_id = current_user.clinic_id
@@ -197,16 +198,23 @@ async def financial_summary(
         .group_by(Invoice.status)
     )
 
-    # Ingresos mensuales (filtrados por el mismo rango de fechas)
-    monthly_res = await db.execute(
+    # Formato y límite según periodo
+    if period == "semanal":
+        fmt, lim = 'IYYY-"W"IW', 16
+    elif period == "anual":
+        fmt, lim = "YYYY", 10
+    else:  # mensual (default)
+        fmt, lim = "YYYY-MM", 13
+
+    revenue_res = await db.execute(
         select(
-            func.to_char(Payment.paid_at, "YYYY-MM").label("month"),
+            func.to_char(Payment.paid_at, fmt).label("period"),
             func.coalesce(func.sum(Payment.amount), 0).label("total"),
         )
         .where(*pay_filters)
         .group_by(text("1"))
         .order_by(text("1 ASC"))
-        .limit(13)
+        .limit(lim)
     )
 
     # Top 5 pacientes por facturación total
@@ -233,7 +241,7 @@ async def financial_summary(
         ],
         "monthly_revenue": [
             {"month": row[0], "total": float(row[1])}
-            for row in monthly_res.all()
+            for row in revenue_res.all()
         ],
         "top_patients": [
             {"name": row[0], "invoice_count": row[1], "total": float(row[2])}

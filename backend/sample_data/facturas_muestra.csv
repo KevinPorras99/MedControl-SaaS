@@ -1,0 +1,24 @@
+paciente_email,paciente_nombre,descripcion,cantidad,precio_unitario,estado,notas
+andrea.solis@gmail.com,Andrea Solís Vargas,Consulta médica general,1,25000,pagada,Control alergia penicilina
+andrea.solis@gmail.com,Andrea Solís Vargas,Examen de laboratorio - Hemograma completo,1,18500,pagada,Seguimiento post-consulta
+cmendez@hotmail.com,Carlos Méndez Rojas,Consulta medicina interna,1,35000,pagada,Control hipertensión mensual
+cmendez@hotmail.com,Carlos Méndez Rojas,Electrocardiograma (ECG),1,32000,pendiente,Control cardiológico anual
+mfjimenez@outlook.com,María Fernanda Jiménez,Consulta endocrinológica,1,45000,pagada,Control diabetes tipo 2
+mfjimenez@outlook.com,María Fernanda Jiménez,Examen de laboratorio - Glucosa en ayunas,1,8500,pagada,Ayuno 12 horas
+luismora@gmail.com,Luis Alberto Mora Arias,Consulta médica general,1,25000,pendiente,Primera visita
+danielaq@yahoo.com,Daniela Quesada Brenes,Consulta neumológica,1,40000,pagada,Control asma leve
+danielaq@yahoo.com,Daniela Quesada Brenes,Espirometría,1,28000,pagada,Prueba función pulmonar
+rcastillo@gmail.com,Roberto Castillo Núñez,Consulta medicina interna,1,35000,pagada,Control colesterol alto
+rcastillo@gmail.com,Roberto Castillo Núñez,Examen de laboratorio - Perfil lipídico,1,22000,pendiente,Ayuno requerido
+sofiaesp@gmail.com,Sofía Espinoza Torres,Consulta médica general,1,25000,pagada,Primera consulta clínica
+maperez@outlook.com,Miguel Ángel Pérez López,Consulta reumatológica,1,50000,pagada,Control artritis reumatoide
+maperez@outlook.com,Miguel Ángel Pérez López,Radiografía de manos bilateral,1,35000,pendiente,Evaluación daño articular
+lchinchilla@gmail.com,Laura Chinchilla Mora,Consulta neurológica,1,55000,pagada,Control migraña crónica
+lchinchilla@gmail.com,Laura Chinchilla Mora,Examen de laboratorio - Química sanguínea,1,32000,pagada,Perfil metabólico completo
+darroyo@hotmail.com,Diego Arroyo Campos,Consulta médica general,1,25000,pagada,Chequeo preventivo anual
+vacosta@gmail.com,Valentina Acosta Vega,Consulta ginecológica,1,40000,pendiente,Control anual
+fblanco@outlook.com,Francisco Blanco Solano,Consulta endocrinológica,1,45000,pagada,Control hipotiroidismo
+kvargas@gmail.com,Katherine Vargas Ulate,Consulta médica general,1,25000,pagada,Alergia ibuprofeno documentada
+amadrigal@gmail.com,Andrés Madrigal Quirós,Consulta médica general,1,25000,pendiente,Chequeo preventivo
+phernandez@yahoo.com,Paola Hernández Fallas,Consulta reumatológica,1,50000,pagada,Control osteoporosis
+phernandez@yahoo.com,Paola Hernández Fallas,Densitometría ósea,1,42000,pendiente,Evaluación anual densidad ósea

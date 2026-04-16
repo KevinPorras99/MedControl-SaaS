@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { Plus, Receipt, Search, Printer, Trash2, Package, X, AlertTriangle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, Receipt, Search, Printer, Trash2, Package, X, AlertTriangle, Upload, CreditCard, Banknote, ArrowRightLeft, Clock } from 'lucide-react'
 import { format } from 'date-fns'
 import { useQueryClient } from '@tanstack/react-query'
 import { useInvoices, useCreateInvoice, useRegisterPayment, usePatients, useAppConfig, useInventory } from '../../hooks'
@@ -67,11 +68,20 @@ function InventoryPicker({ onSelect, onClose }) {
   )
 }
 
+const PAYMENT_METHODS = [
+  { value: 'efectivo',      label: 'Efectivo',       icon: Banknote },
+  { value: 'tarjeta',       label: 'Tarjeta',        icon: CreditCard },
+  { value: 'transferencia', label: 'Transferencia',  icon: ArrowRightLeft },
+]
+
 function InvoiceForm({ onSubmit, loading, ivaRate = 0.13 }) {
   const { data: patients } = usePatients()
   const [patientId, setPatientId] = useState('')
   const [items, setItems] = useState([emptyItem()])
   const [showPicker, setShowPicker] = useState(false)
+  const [payNow, setPayNow] = useState(false)
+  const [payMethod, setPayMethod] = useState('efectivo')
+  const [payReference, setPayReference] = useState('')
   const setItem = (idx, field, value) =>
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it))
   const addItem = () => setItems(prev => [...prev, emptyItem()])
@@ -95,9 +105,8 @@ function InvoiceForm({ onSubmit, loading, ivaRate = 0.13 }) {
     items.reduce((sum, it) => sum + (parseFloat(it.unit_price) || 0) * (parseInt(it.quantity) || 1), 0), [items])
   const taxPreview = subtotalPreview * ivaRate
   const totalPreview = subtotalPreview + taxPreview
-  const canSubmit = patientId && items.some(it => it.description && it.unit_price)
+  const canSubmit = patientId && items.some(it => it.description.trim())
   const handleSubmit = () => {
-    // Solo enviamos patient_id e items — el backend calcula subtotal, tax y total
     const apiPayload = {
       patient_id: patientId,
       items: items.map(({ description, quantity, unit_price, inventory_item_id }) => ({
@@ -105,7 +114,10 @@ function InvoiceForm({ onSubmit, loading, ivaRate = 0.13 }) {
         ...(inventory_item_id ? { inventory_item_id } : {}),
       })),
     }
-    onSubmit(apiPayload, items)
+    const paymentPayload = payNow
+      ? { payment_method: payMethod, reference: payReference.trim() || undefined }
+      : null
+    onSubmit(apiPayload, items, paymentPayload)
   }
   const inputCls = 'w-full px-2 py-1 rounded border border-silver-300 bg-white text-gray-800 text-sm focus:outline-none focus:ring-1 focus:ring-gold-400 [color-scheme:light]'
 
@@ -188,8 +200,82 @@ function InvoiceForm({ onSubmit, loading, ivaRate = 0.13 }) {
         <p className="text-[10px] text-gray-400 text-right">El backend recalcula los montos al confirmar</p>
       </div>
 
+      {/* ── Forma de cobro ── */}
+      <div className="space-y-3">
+        <label className="text-sm font-medium text-gray-700 dark:text-white/80">Forma de cobro</label>
+
+        {/* Toggle Pendiente / Cobrar ahora */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setPayNow(false)}
+            className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-sm font-medium transition-all ${
+              !payNow
+                ? 'bg-yellow-500 border-yellow-500 text-black shadow-md shadow-yellow-500/30'
+                : 'bg-white/[0.06] border-gray-200/50 dark:border-white/10 text-gray-600 dark:text-white/60 hover:bg-white/10'
+            }`}
+          >
+            <Clock size={15} /> Dejar pendiente
+          </button>
+          <button
+            type="button"
+            onClick={() => setPayNow(true)}
+            className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-sm font-medium transition-all ${
+              payNow
+                ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/30'
+                : 'bg-white/[0.06] border-gray-200/50 dark:border-white/10 text-gray-600 dark:text-white/60 hover:bg-white/10'
+            }`}
+          >
+            <CreditCard size={15} /> Cobrar ahora
+          </button>
+        </div>
+
+        {/* Método de pago — solo si cobrar ahora */}
+        {payNow && (
+          <div className="space-y-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/[0.07] border border-emerald-200 dark:border-emerald-500/20">
+            <div className="grid grid-cols-3 gap-2">
+              {PAYMENT_METHODS.map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setPayMethod(value)}
+                  className={`flex flex-col items-center gap-1.5 py-2.5 px-2 rounded-lg border text-xs font-medium transition-all ${
+                    payMethod === value
+                      ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
+                      : 'bg-white dark:bg-white/[0.05] border-gray-200 dark:border-white/10 text-gray-600 dark:text-white/60 hover:border-emerald-400 hover:text-emerald-600'
+                  }`}
+                >
+                  <Icon size={16} />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {(payMethod === 'tarjeta' || payMethod === 'transferencia') && (
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  {payMethod === 'tarjeta' ? '# Voucher / Aprobación' : '# Comprobante / Referencia'}
+                </label>
+                <input
+                  type="text"
+                  value={payReference}
+                  onChange={e => setPayReference(e.target.value)}
+                  placeholder={payMethod === 'tarjeta' ? 'Ej: 123456' : 'Ej: SINPE-2026-789'}
+                  className="w-full px-3 py-2 text-sm rounded-lg bg-white dark:bg-white/[0.06] border border-gray-200 dark:border-white/10 text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                />
+              </div>
+            )}
+
+            <div className="flex items-center justify-between text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+              <span>Total a cobrar</span>
+              <span className="text-base font-bold">₡{totalPreview.toFixed(2)}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
       <Button className="w-full justify-center" onClick={handleSubmit} disabled={loading || !canSubmit}>
-        {loading ? 'Creando...' : 'Emitir factura'}
+        {loading ? 'Procesando...' : payNow ? '✓ Emitir y registrar pago' : 'Emitir factura'}
       </Button>
     </div>
   )
@@ -219,6 +305,7 @@ function PaymentForm({ invoice, onSubmit, loading }) {
 }
 
 export default function InvoicesPage() {
+  const navigate = useNavigate()
   const [showCreate, setShowCreate] = useState(false)
   const [paying, setPaying] = useState(null)
   const [statusFilter, setStatusFilter] = useState('')
@@ -247,11 +334,20 @@ export default function InvoicesPage() {
       inv.notes?.toLowerCase().includes(q)
     )
   }, [invoices, search, patientMap])
-  const handleCreateInvoice = async (apiData, items) => {
+  const handleCreateInvoice = async (apiData, items, paymentPayload) => {
     const invoice = await createInvoice.mutateAsync(apiData)
+    if (paymentPayload) {
+      await registerPayment.mutateAsync({
+        invoiceId:  invoice.id,   // va en la URL
+        invoice_id: invoice.id,   // va en el body (PaymentCreate)
+        amount:     invoice.total,
+        payment_method: paymentPayload.payment_method,
+        reference:  paymentPayload.reference || null,
+      })
+    }
     setShowCreate(false)
     const patientName = patientMap[apiData.patient_id]?.full_name || '—'
-    printInvoice({ invoice, clinic, patientName, items })
+    printInvoice({ invoice: { ...invoice, status: paymentPayload ? 'pagada' : 'pendiente' }, clinic, patientName, items })
   }
   const handlePrint = (inv) => {
     let items = []
@@ -267,7 +363,14 @@ export default function InvoicesPage() {
     <div>
       <div className="animate-fade-in-down">
         <PageHeader title="Facturación" subtitle={`${filtered.length} facturas`}
-          action={<Button onClick={() => setShowCreate(true)}><Plus size={16} /> Nueva factura</Button>} />
+          action={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate('/invoices/import')}>
+              <Upload size={15} /> Importar CSV
+            </Button>
+            <Button onClick={() => setShowCreate(true)}><Plus size={16} /> Nueva factura</Button>
+          </div>
+        } />
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-5 animate-fade-in" style={{ animationDelay: '0.1s' }}>

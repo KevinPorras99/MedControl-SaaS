@@ -73,11 +73,20 @@ function StatCard({ label, value, icon: Icon, color = 'yellow', sub }) {
   )
 }
 
+const PERIODS = [
+  { value: 'semanal', label: 'Semanal' },
+  { value: 'mensual', label: 'Mensual' },
+  { value: 'anual',   label: 'Anual' },
+]
+
+const PERIOD_LABEL = { semanal: 'Ingresos semanales', mensual: 'Ingresos mensuales', anual: 'Ingresos anuales' }
+
 // ── Financial Tab ─────────────────────────────────
 function FinancialTab() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const { data: report, isLoading } = useFinancialReport({ dateFrom: dateFrom || undefined, dateTo: dateTo || undefined })
+  const [period, setPeriod] = useState('mensual')
+  const { data: report, isLoading } = useFinancialReport({ dateFrom: dateFrom || undefined, dateTo: dateTo || undefined, period })
   const downloadInvoicesCSV = useDownloadInvoicesCSV()
   const downloadPaymentsCSV = useDownloadPaymentsCSV()
 
@@ -107,7 +116,24 @@ function FinancialTab() {
           {/* Revenue chart */}
           {report.monthly_revenue?.length > 0 && (
             <Card className="p-5">
-              <h3 className="text-sm font-semibold text-gray-800 dark:text-white mb-4">Ingresos mensuales</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-white">{PERIOD_LABEL[period]}</h3>
+                <div className="flex gap-1 bg-gray-100 dark:bg-white/[0.06] rounded-lg p-0.5">
+                  {PERIODS.map(p => (
+                    <button
+                      key={p.value}
+                      onClick={() => setPeriod(p.value)}
+                      className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                        period === p.value
+                          ? 'bg-yellow-500 text-black shadow-sm'
+                          : 'text-gray-500 dark:text-white/50 hover:text-gray-700 dark:hover:text-white/80'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={report.monthly_revenue}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />

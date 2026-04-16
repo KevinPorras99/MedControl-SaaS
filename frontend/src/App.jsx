@@ -25,7 +25,10 @@ const LandingPage        = lazy(() => import('./pages/Landing'))
 const LoginPage          = lazy(() => import('./pages/Login'))
 const CheckoutPage       = lazy(() => import('./pages/Checkout'))
 const PortalPage         = lazy(() => import('./pages/Portal'))
-const InventoryPage      = lazy(() => import('./pages/Inventory'))
+const InventoryPage        = lazy(() => import('./pages/Inventory'))
+const ImportInventoryPage  = lazy(() => import('./pages/Inventory/Import'))
+const ImportInvoicesPage   = lazy(() => import('./pages/Invoices/Import'))
+const SuperAdminPage       = lazy(() => import('./pages/SuperAdmin'))
 
 // Fallback minimalista mientras se carga el chunk de la página
 function PageLoader() {
@@ -80,9 +83,11 @@ function AppRoutes() {
           <Route path="records/:patientId/new" element={<ConsultationFormPage />} />
 
           {/* Facturación */}
+          <Route path="invoices/import" element={<ImportInvoicesPage />} />
           <Route path="invoices/*" element={<InvoicesPage />} />
 
           {/* Inventario */}
+          <Route path="inventory/import" element={<ImportInventoryPage />} />
           <Route path="inventory" element={<InventoryPage />} />
 
           {/* Reportes */}
@@ -90,6 +95,9 @@ function AppRoutes() {
 
           {/* Médicos (admin only) */}
           <Route path="doctors" element={<DoctorsPage />} />
+
+          {/* Superadmin */}
+          <Route path="superadmin" element={<SuperAdminPage />} />
 
           {/* Configuración */}
           <Route path="settings" element={<SettingsPage />} />

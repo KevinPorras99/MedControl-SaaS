@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Package, Plus, Search, TrendingDown, AlertTriangle,
   XCircle, ArrowDownCircle, ArrowUpCircle,
-  RefreshCw, Pencil, Trash2, History, X, DollarSign, ScanLine, Camera, CameraOff,
+  RefreshCw, Pencil, Trash2, History, X, DollarSign, ScanLine, Camera, CameraOff, Upload,
 } from 'lucide-react'
 import {
   useInventory, useInventorySummary, useCreateInventoryItem,
@@ -543,6 +544,7 @@ function ItemRow({ item, onEdit, onMove, onHistory, onDelete }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function InventoryPage() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [catFilter, setCatFilter] = useState('')
   const [showLow, setShowLow] = useState(false)
@@ -585,12 +587,20 @@ export default function InventoryPage() {
             <p className="text-sm text-gray-500 dark:text-gray-400">Gestión de insumos y medicamentos</p>
           </div>
         </div>
-        <button
-          onClick={() => setModal({ type: 'form', item: null })}
-          className="flex items-center gap-2 px-4 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl font-semibold text-sm transition-colors shadow-lg shadow-yellow-500/20"
-        >
-          <Plus size={18} /> Nuevo ítem
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => navigate('/inventory/import')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 dark:bg-white/[0.06] dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 border border-gray-200/60 dark:border-white/10 rounded-xl font-semibold text-sm transition-colors"
+          >
+            <Upload size={16} /> Importar CSV
+          </button>
+          <button
+            onClick={() => setModal({ type: 'form', item: null })}
+            className="flex items-center gap-2 px-4 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl font-semibold text-sm transition-colors shadow-lg shadow-yellow-500/20"
+          >
+            <Plus size={18} /> Nuevo ítem
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}

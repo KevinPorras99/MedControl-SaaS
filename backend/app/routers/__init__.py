@@ -13,6 +13,7 @@ from app.routers.reminders import router as reminders_router
 from app.routers.portal import router as portal_router
 from app.routers.consents import router as consents_router
 from app.routers.inventory import router as inventory_router
+from app.routers.superadmin import router as superadmin_router
 # from app.routers.billing import router as billing_router  # deshabilitado hasta configurar Stripe
 
 __all__ = [
@@ -31,4 +32,5 @@ __all__ = [
     "portal_router",
     "consents_router",
     "inventory_router",
+    "superadmin_router",
 ]

@@ -16,6 +16,19 @@ class ClinicOut(BaseModel):
     email: str | None
     phone: str | None
     address: str | None
+    legal_id: str | None = None
+    specialty: str | None = None
+    schedule: str | None = None
+    city: str | None = None
+    province: str | None = None
+    country: str | None = None
+    postal_code: str | None = None
+    whatsapp: str | None = None
+    second_phone: str | None = None
+    website: str | None = None
+    instagram: str | None = None
+    facebook: str | None = None
+    logo_url: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -25,6 +38,19 @@ class ClinicUpdate(BaseModel):
     email: str | None = None
     phone: str | None = None
     address: str | None = None
+    legal_id: str | None = None
+    specialty: str | None = None
+    schedule: str | None = None
+    city: str | None = None
+    province: str | None = None
+    country: str | None = None
+    postal_code: str | None = None
+    whatsapp: str | None = None
+    second_phone: str | None = None
+    website: str | None = None
+    instagram: str | None = None
+    facebook: str | None = None
+    logo_url: str | None = None
 
 
 # ── User ──────────────────────────────────────────

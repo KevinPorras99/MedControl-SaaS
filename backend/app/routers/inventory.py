@@ -1,8 +1,11 @@
+import csv
+import io
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -103,6 +106,59 @@ async def create_item(
     await db.commit()
     await db.refresh(item)
     return _item_out(item)
+
+
+@router.post("/import", dependencies=[RequireClinical])
+async def import_inventory_csv(
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    file: UploadFile = File(...),
+) -> dict:
+    """Importa ítems de inventario desde un archivo CSV."""
+    content = await file.read()
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = content.decode("latin-1")
+
+    reader = csv.DictReader(io.StringIO(text))
+    results: dict = {"imported": 0, "skipped": 0, "errors": []}
+
+    for i, row in enumerate(reader, start=2):
+        name = (row.get("nombre") or "").strip()
+        if not name:
+            results["errors"].append({"row": i, "error": "Columna 'nombre' requerida"})
+            results["skipped"] += 1
+            continue
+
+        try:
+            stock     = max(0, int(float(row.get("stock_inicial") or 0)))
+            min_stock = max(0, int(float(row.get("stock_minimo") or 5)))
+            raw_price = (row.get("precio_costo") or "").strip()
+            cost_price = Decimal(raw_price) if raw_price else None
+        except (ValueError, InvalidOperation):
+            results["errors"].append({"row": i, "error": f"Valores numéricos inválidos en '{name}'"})
+            results["skipped"] += 1
+            continue
+
+        db.add(InventoryItem(
+            clinic_id  = current_user.clinic_id,
+            name       = name,
+            category   = (row.get("categoria") or "otros").strip() or "otros",
+            unit       = (row.get("unidad") or "unidad").strip() or "unidad",
+            sku        = (row.get("sku") or "").strip() or None,
+            stock      = stock,
+            min_stock  = min_stock,
+            cost_price = cost_price,
+            supplier   = (row.get("proveedor") or "").strip() or None,
+            notes      = (row.get("notas") or "").strip() or None,
+        ))
+        results["imported"] += 1
+
+    if results["imported"] > 0:
+        await db.flush()
+
+    return results
 
 
 @router.patch("/{item_id}", dependencies=[RequireClinical])

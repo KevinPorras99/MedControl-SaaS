@@ -23,9 +23,11 @@ export const reportsApi = {
   dashboard: (api) =>
     api.get('/api/reports/dashboard').then(r => r.data),
 
-  /** Resumen financiero con filtros de fecha. */
-  financial: (api, filters = {}) =>
-    api.get('/api/reports/financial', { params: dateParams(filters) }).then(r => r.data),
+  /** Resumen financiero con filtros de fecha y periodo. */
+  financial: (api, { dateFrom, dateTo, period } = {}) =>
+    api.get('/api/reports/financial', {
+      params: { ...dateParams({ dateFrom, dateTo }), period: period || undefined },
+    }).then(r => r.data),
 
   /** Reporte de citas: total, por estado, por médico, tendencia mensual. */
   appointments: (api, { dateFrom, dateTo, doctorId } = {}) =>

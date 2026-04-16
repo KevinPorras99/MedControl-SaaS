@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useUser } from '@clerk/clerk-react'
 import {
   Users, Building2, CreditCard, Shield,
   UserPlus, Trash2, Edit2, Copy, Check,
   UserCheck, UserX, Clock, Package,
-  FileCheck, Plus
+  FileCheck, Plus, Globe, Phone, MapPin, Hash,
+  Stethoscope, Instagram, Facebook, AlertCircle,
 } from 'lucide-react'
 import { PageHeader, Card, Spinner, Button, Modal, Input, Select, EmptyState, Badge } from '../../components/ui'
 import {
@@ -144,23 +145,133 @@ function TeamTab({ isAdmin }) {
 }
 
 // ── Clinic Tab ────────────────────────────────────
+
+const SPECIALTIES = [
+  'Medicina General', 'Medicina Familiar', 'Pediatría', 'Ginecología y Obstetricia',
+  'Cardiología', 'Dermatología', 'Neurología', 'Ortopedia y Traumatología',
+  'Oftalmología', 'Otorrinolaringología', 'Psiquiatría y Salud Mental',
+  'Oncología', 'Endocrinología', 'Urología', 'Gastroenterología',
+  'Odontología General', 'Ortodoncia', 'Clínica Dental',
+  'Fisioterapia y Rehabilitación', 'Nutrición y Dietética',
+  'Laboratorio Clínico', 'Imagenología y Radiología', 'Otra',
+]
+
+const PROVINCES_CR = [
+  'San José', 'Alajuela', 'Cartago', 'Heredia',
+  'Guanacaste', 'Puntarenas', 'Limón',
+]
+
+// Valida cédula jurídica de Costa Rica: X-XXX-XXXXXX (10 dígitos)
+function validateLegalId(val) {
+  if (!val) return null
+  const digits = val.replace(/\D/g, '')
+  if (digits.length !== 10) return 'La cédula jurídica debe tener 10 dígitos'
+  return null
+}
+
+function validatePhone(val) {
+  if (!val) return null
+  const digits = val.replace(/\D/g, '')
+  if (digits.length < 8) return 'Mínimo 8 dígitos'
+  return null
+}
+
+function validateEmail(val) {
+  if (!val) return null
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) ? null : 'Email inválido'
+}
+
+function validateWebsite(val) {
+  if (!val) return null
+  try { new URL(val.startsWith('http') ? val : 'https://' + val); return null }
+  catch { return 'URL inválida (ej: https://miclinica.com)' }
+}
+
+// Formatea cédula jurídica automáticamente: 3045678901 → 3-045-678901
+function formatLegalId(raw) {
+  const d = raw.replace(/\D/g, '').slice(0, 10)
+  if (d.length <= 1) return d
+  if (d.length <= 4) return `${d[0]}-${d.slice(1)}`
+  return `${d[0]}-${d.slice(1, 4)}-${d.slice(4)}`
+}
+
+function FieldError({ msg }) {
+  if (!msg) return null
+  return (
+    <p className="flex items-center gap-1 text-xs text-red-500 mt-1">
+      <AlertCircle size={11} /> {msg}
+    </p>
+  )
+}
+
+function SectionTitle({ icon: Icon, children }) {
+  return (
+    <div className="flex items-center gap-2 pt-2 pb-1 border-b border-gray-200/40 dark:border-white/10 mb-3">
+      <Icon size={15} className="text-yellow-500" />
+      <h3 className="text-xs font-semibold text-gray-500 dark:text-white/50 uppercase tracking-wider">{children}</h3>
+    </div>
+  )
+}
+
 function ClinicTab() {
   const { data: clinic, isLoading } = useClinicSettings()
   const updateClinic = useUpdateClinic()
   const [form, setForm] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [touched, setTouched] = useState({})
 
-  const startEdit = () => setForm({
-    name: clinic?.name || '',
-    email: clinic?.email || '',
-    phone: clinic?.phone || '',
-    address: clinic?.address || '',
-  })
+  const startEdit = () => {
+    setForm({
+      name:         clinic?.name || '',
+      legal_id:     clinic?.legal_id || '',
+      specialty:    clinic?.specialty || '',
+      // Contacto
+      email:        clinic?.email || '',
+      phone:        clinic?.phone || '',
+      second_phone: clinic?.second_phone || '',
+      whatsapp:     clinic?.whatsapp || '',
+      // Ubicación
+      address:      clinic?.address || '',
+      city:         clinic?.city || '',
+      province:     clinic?.province || '',
+      country:      clinic?.country || 'Costa Rica',
+      postal_code:  clinic?.postal_code || '',
+      // Digital
+      website:      clinic?.website || '',
+      instagram:    clinic?.instagram || '',
+      facebook:     clinic?.facebook || '',
+      // Horario
+      schedule:     clinic?.schedule || '',
+    })
+    setTouched({})
+  }
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const set = (k, v) => {
+    setTouched(t => ({ ...t, [k]: true }))
+    setForm(f => ({ ...f, [k]: v }))
+  }
+
+  const errors = useMemo(() => {
+    if (!form) return {}
+    return {
+      name:     !form.name.trim() ? 'Nombre requerido' : null,
+      legal_id: validateLegalId(form.legal_id),
+      email:    validateEmail(form.email),
+      phone:    validatePhone(form.phone),
+      whatsapp: validatePhone(form.whatsapp),
+      second_phone: validatePhone(form.second_phone),
+      website:  validateWebsite(form.website),
+    }
+  }, [form])
+
+  const hasErrors = Object.values(errors).some(Boolean)
 
   const handleSave = async () => {
-    await updateClinic.mutateAsync(form)
+    setTouched({ name: true, legal_id: true, email: true, phone: true, whatsapp: true, website: true })
+    if (hasErrors) return
+    const payload = { ...form }
+    // Normalizar legal_id a solo dígitos en DB, pero guardar formateado
+    await updateClinic.mutateAsync(payload)
     setForm(null)
   }
 
@@ -174,66 +285,283 @@ function ClinicTab() {
 
   if (isLoading) return <Spinner />
 
+  // ── Vista de solo lectura ──────────────────────────────────────────────────
+  if (!form) {
+    const fields = [
+      { label: 'Nombre comercial',    value: clinic?.name },
+      { label: 'Cédula jurídica',     value: clinic?.legal_id || '—' },
+      { label: 'Especialidad',        value: clinic?.specialty || '—' },
+      { label: 'Plan',                value: <span className="capitalize font-semibold text-yellow-600">{clinic?.subscription_plan}</span> },
+      { label: 'Estado',              value: <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${clinic?.is_active ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-red-100 text-red-700 border border-red-300'}`}>{clinic?.is_active ? 'Activa' : 'Inactiva'}</span> },
+      { label: 'Email',               value: clinic?.email || '—' },
+      { label: 'Teléfono principal',  value: clinic?.phone || '—' },
+      { label: 'WhatsApp',            value: clinic?.whatsapp || '—' },
+      { label: 'Teléfono secundario', value: clinic?.second_phone || '—' },
+      { label: 'Dirección',           value: clinic?.address || '—' },
+      { label: 'Ciudad / Cantón',     value: clinic?.city || '—' },
+      { label: 'Provincia',           value: clinic?.province || '—' },
+      { label: 'País',                value: clinic?.country || '—' },
+      { label: 'Código postal',       value: clinic?.postal_code || '—' },
+      { label: 'Sitio web',           value: clinic?.website ? <a href={clinic.website} target="_blank" rel="noopener noreferrer" className="text-yellow-600 underline underline-offset-2">{clinic.website}</a> : '—' },
+      { label: 'Instagram',           value: clinic?.instagram || '—' },
+      { label: 'Facebook',            value: clinic?.facebook || '—' },
+    ]
+
+    return (
+      <div className="space-y-5">
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-base font-semibold text-gray-800 dark:text-white">Perfil de la clínica</h2>
+            <Button size="sm" variant="outline" onClick={startEdit}><Edit2 size={13} /> Editar</Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+            {fields.map(({ label, value }) => (
+              <div key={label}>
+                <p className="text-xs font-medium text-gray-500 dark:text-white/40 uppercase tracking-wide mb-0.5">{label}</p>
+                <p className="text-sm text-gray-800 dark:text-white">{value}</p>
+              </div>
+            ))}
+            {clinic?.schedule && (
+              <div className="sm:col-span-2">
+                <p className="text-xs font-medium text-gray-500 dark:text-white/40 uppercase tracking-wide mb-0.5">Horario</p>
+                <p className="text-sm text-gray-800 dark:text-white whitespace-pre-line">{clinic.schedule}</p>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {clinic?.access_code && (
+          <Card className="p-6">
+            <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-2">Código de acceso</h2>
+            <p className="text-sm text-gray-500 dark:text-white/50 mb-4">
+              Compartí este código con nuevos miembros del equipo para que puedan unirse a la clínica.
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/30 rounded-lg px-5 py-3">
+                <span className="font-mono font-bold text-yellow-700 dark:text-yellow-400 tracking-[0.3em] text-lg">
+                  {clinic.access_code}
+                </span>
+              </div>
+              <Button variant="outline" onClick={copyCode}>
+                {copied ? <><Check size={14} /> Copiado</> : <><Copy size={14} /> Copiar</>}
+              </Button>
+            </div>
+          </Card>
+        )}
+      </div>
+    )
+  }
+
+  // ── Formulario de edición ──────────────────────────────────────────────────
+  const E = ({ field }) => touched[field] ? <FieldError msg={errors[field]} /> : null
+
   return (
     <div className="space-y-5">
       <Card className="p-6">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-white">Datos de la clínica</h2>
-          {!form && <Button size="sm" variant="outline" onClick={startEdit}><Edit2 size={13} /> Editar</Button>}
+          <h2 className="text-base font-semibold text-gray-800 dark:text-white">Editar perfil de la clínica</h2>
         </div>
 
-        {form ? (
-          <div className="space-y-4">
-            <Input label="Nombre de la clínica *" value={form.name} onChange={e => set('name', e.target.value)} />
-            <div className="grid grid-cols-2 gap-3">
-              <Input label="Email de contacto" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
-              <Input label="Teléfono" value={form.phone} onChange={e => set('phone', e.target.value)} />
+        {/* Identificación legal */}
+        <SectionTitle icon={Hash}>Identificación legal</SectionTitle>
+        <div className="space-y-3 mb-5">
+          <div>
+            <Input
+              label="Nombre comercial *"
+              value={form.name}
+              onChange={e => set('name', e.target.value)}
+              onBlur={() => setTouched(t => ({ ...t, name: true }))}
+              placeholder="Ej: Clínica Santa María S.A."
+            />
+            <E field="name" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Input
+                label="Cédula jurídica"
+                value={form.legal_id}
+                onChange={e => set('legal_id', formatLegalId(e.target.value))}
+                onBlur={() => setTouched(t => ({ ...t, legal_id: true }))}
+                placeholder="3-XXX-XXXXXX"
+                maxLength={12}
+              />
+              <E field="legal_id" />
+              <p className="text-[10px] text-gray-400 mt-1">Formato: 3-045-678901 (10 dígitos)</p>
             </div>
-            <Input label="Dirección" value={form.address} onChange={e => set('address', e.target.value)} />
-            <div className="flex gap-3">
-              <Button onClick={handleSave} disabled={updateClinic.isPending || !form.name}>
-                {updateClinic.isPending ? 'Guardando...' : 'Guardar cambios'}
-              </Button>
-              <Button variant="outline" onClick={() => setForm(null)}>Cancelar</Button>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Especialidad / Tipo</label>
+              <select
+                value={form.specialty}
+                onChange={e => set('specialty', e.target.value)}
+                className="w-full px-3 py-2 text-sm rounded-lg bg-white/60 dark:bg-white/[0.06] border border-gray-300/60 dark:border-white/10 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-500/40"
+              >
+                <option value="">Seleccionar...</option>
+                {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
             </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {[
-              { label: 'Nombre', value: clinic?.name },
-              { label: 'Plan', value: <span className="capitalize font-semibold text-yellow-600">{clinic?.subscription_plan}</span> },
-              { label: 'Email', value: clinic?.email || '—' },
-              { label: 'Teléfono', value: clinic?.phone || '—' },
-              { label: 'Dirección', value: clinic?.address || '—' },
-              { label: 'Estado', value: <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${clinic?.is_active ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-red-100 text-red-700 border border-red-300'}`}>{clinic?.is_active ? 'Activa' : 'Inactiva'}</span> },
-            ].map(({ label, value }) => (
-              <div key={label}>
-                <p className="text-xs font-medium text-gray-500 dark:text-white/40 uppercase tracking-wide mb-1">{label}</p>
-                <p className="text-sm text-gray-800 dark:text-white">{value}</p>
-              </div>
-            ))}
+        </div>
+
+        {/* Contacto */}
+        <SectionTitle icon={Phone}>Información de contacto</SectionTitle>
+        <div className="space-y-3 mb-5">
+          <div>
+            <Input
+              label="Email de contacto"
+              type="email"
+              value={form.email}
+              onChange={e => set('email', e.target.value)}
+              onBlur={() => setTouched(t => ({ ...t, email: true }))}
+              placeholder="contacto@miclinica.com"
+            />
+            <E field="email" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Input
+                label="Teléfono principal"
+                value={form.phone}
+                onChange={e => set('phone', e.target.value)}
+                onBlur={() => setTouched(t => ({ ...t, phone: true }))}
+                placeholder="2234-5678"
+              />
+              <E field="phone" />
+            </div>
+            <div>
+              <Input
+                label="Teléfono secundario"
+                value={form.second_phone}
+                onChange={e => set('second_phone', e.target.value)}
+                onBlur={() => setTouched(t => ({ ...t, second_phone: true }))}
+                placeholder="Opcional"
+              />
+              <E field="second_phone" />
+            </div>
+          </div>
+          <div>
+            <Input
+              label="WhatsApp"
+              value={form.whatsapp}
+              onChange={e => set('whatsapp', e.target.value)}
+              onBlur={() => setTouched(t => ({ ...t, whatsapp: true }))}
+              placeholder="+506 8888-8888"
+            />
+            <E field="whatsapp" />
+            <p className="text-[10px] text-gray-400 mt-1">Se usa para confirmaciones automáticas a pacientes</p>
+          </div>
+        </div>
+
+        {/* Ubicación */}
+        <SectionTitle icon={MapPin}>Ubicación</SectionTitle>
+        <div className="space-y-3 mb-5">
+          <Input
+            label="Dirección exacta"
+            value={form.address}
+            onChange={e => set('address', e.target.value)}
+            placeholder="Ej: 100m norte del Parque Central"
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Ciudad / Cantón"
+              value={form.city}
+              onChange={e => set('city', e.target.value)}
+              placeholder="Ej: San José"
+            />
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Provincia</label>
+              <select
+                value={form.province}
+                onChange={e => set('province', e.target.value)}
+                className="w-full px-3 py-2 text-sm rounded-lg bg-white/60 dark:bg-white/[0.06] border border-gray-300/60 dark:border-white/10 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-500/40"
+              >
+                <option value="">Seleccionar...</option>
+                {PROVINCES_CR.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="País"
+              value={form.country}
+              onChange={e => set('country', e.target.value)}
+              placeholder="Costa Rica"
+            />
+            <Input
+              label="Código postal"
+              value={form.postal_code}
+              onChange={e => set('postal_code', e.target.value)}
+              placeholder="Ej: 10101"
+              maxLength={10}
+            />
+          </div>
+        </div>
+
+        {/* Presencia digital */}
+        <SectionTitle icon={Globe}>Presencia digital</SectionTitle>
+        <div className="space-y-3 mb-5">
+          <div>
+            <Input
+              label="Sitio web"
+              value={form.website}
+              onChange={e => set('website', e.target.value)}
+              onBlur={() => setTouched(t => ({ ...t, website: true }))}
+              placeholder="https://miclinica.com"
+            />
+            <E field="website" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 flex items-center gap-1.5">
+                <Instagram size={13} className="text-pink-500" /> Instagram
+              </label>
+              <input
+                className="w-full px-3 py-2 text-sm rounded-lg bg-white/60 dark:bg-white/[0.06] border border-gray-300/60 dark:border-white/10 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-500/40"
+                value={form.instagram}
+                onChange={e => set('instagram', e.target.value)}
+                placeholder="@miclinica"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 flex items-center gap-1.5">
+                <Facebook size={13} className="text-blue-500" /> Facebook
+              </label>
+              <input
+                className="w-full px-3 py-2 text-sm rounded-lg bg-white/60 dark:bg-white/[0.06] border border-gray-300/60 dark:border-white/10 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-500/40"
+                value={form.facebook}
+                onChange={e => set('facebook', e.target.value)}
+                placeholder="facebook.com/miclinica"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Horario */}
+        <SectionTitle icon={Clock}>Horario de atención</SectionTitle>
+        <div className="mb-6">
+          <textarea
+            rows={4}
+            value={form.schedule}
+            onChange={e => set('schedule', e.target.value)}
+            placeholder={"Lunes a Viernes: 8:00 a.m. – 5:00 p.m.\nSábados: 8:00 a.m. – 12:00 p.m.\nDomingos y feriados: Cerrado"}
+            className="w-full px-3 py-2 text-sm rounded-lg bg-white/60 dark:bg-white/[0.06] border border-gray-300/60 dark:border-white/10 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/40 resize-none"
+          />
+          <p className="text-[10px] text-gray-400 mt-1">Se muestra en la app del portal del paciente</p>
+        </div>
+
+        {hasErrors && Object.values(touched).some(Boolean) && (
+          <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 rounded-lg px-4 py-2.5 mb-4">
+            <AlertCircle size={15} />
+            Corregí los errores antes de guardar
           </div>
         )}
-      </Card>
 
-      {clinic?.access_code && (
-        <Card className="p-6">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-2">Código de acceso</h2>
-          <p className="text-sm text-gray-500 dark:text-white/50 mb-4">
-            Compartí este código con nuevos miembros del equipo para que puedan unirse a la clínica.
-          </p>
-          <div className="flex items-center gap-3">
-            <div className="flex-1 bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/30 rounded-lg px-5 py-3">
-              <span className="font-mono font-bold text-yellow-700 dark:text-yellow-400 tracking-[0.3em] text-lg">
-                {clinic.access_code}
-              </span>
-            </div>
-            <Button variant="outline" onClick={copyCode}>
-              {copied ? <><Check size={14} /> Copiado</> : <><Copy size={14} /> Copiar</>}
-            </Button>
-          </div>
-        </Card>
-      )}
+        <div className="flex gap-3">
+          <Button onClick={handleSave} disabled={updateClinic.isPending || hasErrors}>
+            {updateClinic.isPending ? 'Guardando...' : 'Guardar cambios'}
+          </Button>
+          <Button variant="outline" onClick={() => setForm(null)}>Cancelar</Button>
+        </div>
+      </Card>
     </div>
   )
 }

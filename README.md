@@ -121,6 +121,8 @@ El rol se asigna en el onboarding al hacer el primer login.
 | `doctor` | doctor@medcontrol.dev | Mc$Dr#7kWp3N! |
 | `receptionist` | recepcion@medcontrol.dev | Mc$Rec#4mQv8L! |
 
+Codigo de acceso a clinica: I8OO0K2A
+
 > Clerk requiere contraseñas con mayúsculas, minúsculas, números y símbolos.
 
 ---

@@ -1,15 +1,18 @@
+import csv
+import io
 import json
 import uuid
 from datetime import datetime, timezone
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.database import get_db
 from app.dependencies import CurrentUser, RequireAnyRole, RequireClinical
 from app.models.invoice import Invoice
+from app.models.patient import Patient
 from app.models.payment import Payment
 from app.models.inventory import InventoryItem, InventoryMovement
 from app.schemas import InvoiceCreate, InvoiceOut, InvoiceUpdate, PaymentCreate, PaymentOut
@@ -101,6 +104,99 @@ async def create_invoice(
 
     await db.refresh(invoice)
     return invoice
+
+
+@router.post("/import", dependencies=[RequireAnyRole])
+async def import_invoices_csv(
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    file: UploadFile = File(...),
+) -> dict:
+    """Importa facturas desde un archivo CSV. Una fila = una factura con un ítem."""
+    content = await file.read()
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = content.decode("latin-1")
+
+    reader = csv.DictReader(io.StringIO(text))
+    results: dict = {"imported": 0, "skipped": 0, "errors": []}
+
+    for i, row in enumerate(reader, start=2):
+        patient_email = (row.get("paciente_email") or "").strip().lower()
+        patient_name  = (row.get("paciente_nombre") or "").strip()
+        description   = (row.get("descripcion") or "").strip()
+
+        if not description:
+            results["errors"].append({"row": i, "error": "Columna 'descripcion' requerida"})
+            results["skipped"] += 1
+            continue
+
+        # Buscar paciente por email primero, luego por nombre
+        patient = None
+        if patient_email:
+            res = await db.execute(
+                select(Patient).where(
+                    Patient.clinic_id == current_user.clinic_id,
+                    Patient.email == patient_email,
+                    Patient.is_active == True,
+                )
+            )
+            patient = res.scalar_one_or_none()
+
+        if not patient and patient_name:
+            res = await db.execute(
+                select(Patient).where(
+                    Patient.clinic_id == current_user.clinic_id,
+                    Patient.full_name.ilike(f"%{patient_name}%"),
+                    Patient.is_active == True,
+                )
+            )
+            patient = res.scalars().first()
+
+        if not patient:
+            results["errors"].append({"row": i, "error": f"Paciente no encontrado: '{patient_email or patient_name}'"})
+            results["skipped"] += 1
+            continue
+
+        try:
+            quantity   = max(1, int(float(row.get("cantidad") or 1)))
+            unit_price = Decimal(str((row.get("precio_unitario") or "0")).strip())
+        except (ValueError, InvalidOperation):
+            results["errors"].append({"row": i, "error": f"Valores numéricos inválidos en fila {i}"})
+            results["skipped"] += 1
+            continue
+
+        subtotal = unit_price * quantity
+        tax      = (subtotal * IVA_RATE).quantize(Decimal("0.01"))
+        total    = subtotal + tax
+
+        raw_status = (row.get("estado") or "pendiente").strip().lower()
+        if raw_status not in ("pendiente", "pagada", "anulada"):
+            raw_status = "pendiente"
+
+        invoice_number = await generate_invoice_number(current_user.clinic_id, db)
+        items_json = json.dumps([{
+            "description": description,
+            "quantity": quantity,
+            "unit_price": float(unit_price),
+            "subtotal": float(subtotal),
+        }])
+
+        db.add(Invoice(
+            clinic_id      = current_user.clinic_id,
+            patient_id     = patient.id,
+            invoice_number = invoice_number,
+            subtotal       = subtotal,
+            tax            = tax,
+            total          = total,
+            status         = raw_status,
+            notes          = items_json,
+        ))
+        results["imported"] += 1
+        await db.flush()  # flush por cada factura para que generate_invoice_number vea el número anterior
+
+    return results
 
 
 @router.patch("/{invoice_id}", response_model=InvoiceOut, dependencies=[RequireClinical])

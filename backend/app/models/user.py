@@ -11,9 +11,9 @@ class User(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     clerk_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
-    clinic_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("clinics.id", ondelete="CASCADE"), nullable=False)
+    clinic_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("clinics.id", ondelete="CASCADE"), nullable=True)
     role: Mapped[str] = mapped_column(
-        Enum("admin_clinic", "doctor", "receptionist", name="user_role"),
+        Enum("admin_clinic", "doctor", "receptionist", "superadmin", name="user_role"),
         nullable=False, default="receptionist"
     )
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
